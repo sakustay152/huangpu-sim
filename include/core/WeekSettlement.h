@@ -34,6 +34,8 @@ protected:
     virtual void chargeExpenses();        // 每周生活费支出
     virtual void settleStudy();           // 一周没学习扣平时分
     virtual void applyScheduledEffects(); // 延迟效果（如室友还钱）
+    virtual void settleStocks();          // 股票融资利息 + 周结算时股价走一格
+    virtual void settleEnergy();          // 每周体力回血
     virtual void checkMilestones();       // 期中警告 / 期末判定 / 奖学金 / 补考费
     virtual void beginNewWeek();          // 周数+1、冷却递减、广播 WeekStarted
     virtual void refreshMarketAndRumors(); // 行情周刷新 + 新情报

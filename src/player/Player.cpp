@@ -8,6 +8,7 @@
 
 Player::Player(const ConfigManager& cfg)
     : inventory_(cfg.balance().maxSlots),
+      energy_(cfg),
       studyScore_(cfg.balance().studyStart) {}
 
 void Player::onTradeCompleted(const TradeCompletedEvent& e) {
@@ -25,6 +26,7 @@ Json Player::toJson() const {
         {"wallet", wallet_.toJson()},
         {"inventory", inventory_.toJson()},
         {"studyScore", studyScore_},
+        {"stamina", energy_.toJson()},
         {"ledger", ledger_},
     };
 }
@@ -33,6 +35,7 @@ void Player::fromJson(const Json& j) {
     if (j.contains("wallet")) wallet_.fromJson(j["wallet"]);
     if (j.contains("inventory")) inventory_.fromJson(j["inventory"]);
     studyScore_ = ju::getOr(j, "studyScore", studyScore_);
+    if (j.contains("stamina")) energy_.fromJson(j["stamina"]);
     ledger_.clear();
     if (j.contains("ledger") && j["ledger"].is_array())
         for (const auto& e : j["ledger"]) ledger_.push_back(e.get<std::string>());

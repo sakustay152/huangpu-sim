@@ -69,6 +69,32 @@ void ConfigManager::loadBalance() {
     balance_.innerTicketBonus = ju::getOr(j, "innerTicketBonus", 1.25);
     balance_.seniorWorkBonus  = ju::getOr(j, "seniorWorkBonus", 1.2);
 
+    // 炒股模拟器
+    balance_.stockStartPrice = ju::getOr(j, "stockStartPrice", 10.0);
+    balance_.stockVolMin     = ju::getOr(j, "stockVolMin", 0.01);
+    balance_.stockVolMax     = ju::getOr(j, "stockVolMax", 0.06);
+    balance_.stockFailProb   = ju::getOr(j, "stockFailProb", 0.62);
+    balance_.stockCrashProb  = ju::getOr(j, "stockCrashProb", 0.03);
+    balance_.stockCrashDrop  = ju::getOr(j, "stockCrashDrop", 0.25);
+    balance_.stockBoomProb   = ju::getOr(j, "stockBoomProb", 0.02);
+    balance_.stockBoomRise   = ju::getOr(j, "stockBoomRise", 0.30);
+    balance_.stockFeeRate    = ju::getOr(j, "stockFeeRate", 0.005);
+    balance_.stockLoanWeeklyRate = ju::getOr(j, "stockLoanWeeklyRate", 0.05);
+    balance_.stockLeverages.clear();
+    if (j.contains("stockLeverages") && j["stockLeverages"].is_array())
+        for (const auto& l : j["stockLeverages"])
+            balance_.stockLeverages.push_back(l.get<int>());
+    if (balance_.stockLeverages.empty()) balance_.stockLeverages = {1, 2, 5};
+
+    // 体力
+    balance_.staminaMax           = ju::getOr(j, "staminaMax", 100);
+    balance_.staminaStockCost     = ju::getOr(j, "staminaStockCost", 15);
+    balance_.staminaRestGain      = ju::getOr(j, "staminaRestGain", 40);
+    balance_.staminaWeeklyRecover = ju::getOr(j, "staminaWeeklyRecover", 30);
+    balance_.staminaLowThreshold  = ju::getOr(j, "staminaLowThreshold", 30);
+    balance_.staminaLowFailBonus  = ju::getOr(j, "staminaLowFailBonus", 0.15);
+    balance_.bankruptcyDebt       = ju::getOr(j, "bankruptcyDebt", 3000);
+
     if (j.contains("jobs") && j["jobs"].is_object()) {
         for (auto it = j["jobs"].begin(); it != j["jobs"].end(); ++it) {
             if (it.value().is_array() && it.value().size() >= 2)

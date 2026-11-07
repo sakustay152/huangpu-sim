@@ -23,6 +23,9 @@ public:
         return true;
     }
 
+    // 强制扣款：可以扣成负数（炒股融资爆仓产生的债务）——唯一允许负债的入口
+    void charge(int amount) { if (amount > 0) money_ -= amount; }
+
     Json toJson() const override { return Json{{"money", money_}}; }
     void fromJson(const Json& j) override;
 

@@ -10,6 +10,7 @@
 #include "events/EventScheduler.h"
 #include "player/Player.h"
 #include "story/StoryFlags.h"
+#include "stock/StockSystem.h"
 #include "time/TimeSystem.h"
 #include "util/JsonUtil.h"
 
@@ -21,6 +22,8 @@ WeekSettlement::Report WeekSettlement::run() {
     chargeExpenses();
     settleStudy();
     applyScheduledEffects();
+    settleStocks();
+    settleEnergy();
     checkMilestones();
     beginNewWeek();
     refreshMarketAndRumors();
@@ -49,6 +52,19 @@ void WeekSettlement::settleStudy() {
 void WeekSettlement::applyScheduledEffects() {
     // 延迟效果到期的本周生效（如借室友的钱被归还）
     ctx_.events->applyDueEffects(ctx_);
+}
+
+void WeekSettlement::settleStocks() {
+    // 融资负债按周计息（先计息再走价格，爆仓在此触发）
+    long long interest = ctx_.stock->chargeWeeklyInterest();
+    if (interest > 0)
+        rep_.lines.push_back("【股市】融资利息 -¥" + std::to_string(interest) +
+                             "（负债按周计息）");
+    ctx_.stock->onTick(ctx_); // 周日股价也波动一格
+}
+
+void WeekSettlement::settleEnergy() {
+    ctx_.player->energy().add(ctx_.config.balance().staminaWeeklyRecover);
 }
 
 void WeekSettlement::checkMilestones() {

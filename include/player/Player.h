@@ -9,6 +9,7 @@
 
 #include "core/DomainEvents.h"
 #include "core/ISaveable.h"
+#include "player/Energy.h"
 #include "player/Inventory.h"
 #include "player/Wallet.h"
 
@@ -28,6 +29,10 @@ public:
     int studyScore() const { return studyScore_; }
     void addStudy(int delta) { studyScore_ += delta; if (studyScore_ < 0) studyScore_ = 0; if (studyScore_ > 100) studyScore_ = 100; }
 
+    // ---- 体力 ----
+    const EnergySystem& energy() const { return energy_; }
+    EnergySystem& energy() { return energy_; }
+
     // ---- 交易流水（Observer 订阅入口） ----
     void onTradeCompleted(const TradeCompletedEvent& e);
     const std::vector<std::string>& ledger() const { return ledger_; }
@@ -36,8 +41,9 @@ public:
     void fromJson(const Json& j) override;
 
 private:
-    Wallet wallet_;             // 封装：外部只能走 add/spend
+    Wallet wallet_;             // 封装：外部只能走 add/spend（债务只经 charge）
     Inventory inventory_;       // 组合：背包是玩家的一部分
+    EnergySystem energy_;       // 组合：体力（炒股消耗，休息恢复）
     int studyScore_;
     std::vector<std::string> ledger_; // 最近流水（存档保留，上限截断）
 };

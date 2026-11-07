@@ -27,6 +27,7 @@
 #include "player/Player.h"
 #include "player/TradeSystem.h"
 #include "simulate/SimulationRunner.h"
+#include "stock/StockSystem.h"
 #include "story/NpcSystem.h"
 #include "story/StoryFlags.h"
 #include "time/TimeSystem.h"
@@ -182,6 +183,69 @@ int main(int argc, char** argv) {
         check(noCrash, "30 局 headless 无崩溃");
         check(moneyOk, "全程现金 ≥ 0（钱不为负不变量）");
         check(endingOk, "每局都能得到结局");
+
+        // ---------- 10. 炒股：体力 / 杠杆 / 爆仓 / 破产 ----------
+        std::cout << "\n== StockSystem / Energy / 破产 ==\n";
+        {
+            GameContext sctx(cfg, rng, bus);
+            sctx.initNewGame();
+
+            // 体力
+            EnergySystem& en = sctx.player->energy();
+            check(en.get() == cfg.balance().staminaMax, "体力初始满值");
+            check(!en.spend(9999), "体力不足拒绝消耗");
+            check(en.spend(cfg.balance().staminaStockCost), "正常消耗体力");
+            check(en.get() == cfg.balance().staminaMax - cfg.balance().staminaStockCost,
+                  "体力扣减正确");
+            en.add(cfg.balance().staminaRestGain);
+            check(en.get() == std::min(cfg.balance().staminaMax,
+                                       cfg.balance().staminaMax - cfg.balance().staminaStockCost +
+                                           cfg.balance().staminaRestGain),
+                  "休息恢复体力（不超上限）");
+
+            // Wallet：唯一允许负债的入口
+            sctx.player->wallet().charge(cfg.balance().startMoney + 10);
+            check(sctx.player->wallet().get() == -10, "charge 可扣成负数（债务）");
+            sctx.player->wallet().add(cfg.balance().startMoney); // 回血，继续后续用例
+
+            // 价格随机走：同种子完全一致（bug 可复现），且始终有界
+            Random rw1(9), rw2(9);
+            StockSystem st1(cfg, rw1), st2(cfg, rw2);
+            for (int i = 0; i < 20; ++i) {
+                st1.onTick(sctx);
+                st2.onTick(sctx);
+            }
+            check(std::abs(st1.price() - st2.price()) < 1e-9, "同种子股价序列完全一致");
+            check(st1.price() >= 0.5 && st1.price() <= 999.0, "股价始终在 [0.5, 999] 内");
+
+            // 杠杆买入：x5 投入 2900 → 仓位 14500
+            sctx.stock->setLeverage(5);
+            auto rb = sctx.stock->buy(sctx, 2900);
+            check(rb.ok, "杠杆 x5 买入 2900 元");
+            double p0 = sctx.stock->price();
+            int expectShares = static_cast<int>(std::floor(2900.0 * 5 / p0));
+            int expectCost = static_cast<int>(std::llround(expectShares * p0));
+            check(sctx.stock->shares() == expectShares, "股数 = 投入×杠杆/现价");
+            check(sctx.stock->loan() == expectCost - 2900, "融资负债 = 仓位 - 自有资金");
+
+            // 爆仓：价格 ×0.25 → 净值 ≤ 0 → 强制平仓 → 负债 → 破产 flag
+            sctx.stock->applyExternalShock(sctx, 0.25);
+            check(sctx.stock->shares() == 0, "净值 ≤ 0 强制平仓");
+            check(sctx.player->wallet().get() < 0, "爆仓后钱包为负（债务）");
+            check(sctx.player->wallet().get() < -cfg.balance().bankruptcyDebt, "欠债超过破产线");
+            check(sctx.flags->has("bankrupt"), "爆仓欠债 → 破产 flag");
+
+            // 存档往返：股价/持仓/负债/体力
+            Json sj = sctx.stock->toJson();
+            GameContext lctx(cfg, rng, bus);
+            lctx.initNewGame();
+            lctx.stock->fromJson(sj);
+            check(std::abs(lctx.stock->price() - sctx.stock->price()) < 1e-9, "股价存档往返");
+            check(lctx.stock->loan() == sctx.stock->loan(), "融资负债存档往返");
+            Json pj = sctx.player->toJson();
+            lctx.player->fromJson(pj);
+            check(lctx.player->energy().get() == sctx.player->energy().get(), "体力存档往返");
+        }
 
     } catch (const std::exception& e) {
         std::cout << "[测试环境异常] " << e.what() << "\n";

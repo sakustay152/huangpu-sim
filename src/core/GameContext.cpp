@@ -10,6 +10,7 @@
 #include "player/TradeSystem.h"
 #include "story/NpcSystem.h"
 #include "story/StoryFlags.h"
+#include "stock/StockSystem.h"
 #include "time/TimeSystem.h"
 #include "util/JsonUtil.h"
 
@@ -23,6 +24,7 @@ GameContext::GameContext(const ConfigManager& config, Random& rng, EventBus& bus
     flags = std::make_unique<StoryFlags>();
     npcs = std::make_unique<NpcSystem>(config);
     trade = std::make_unique<TradeSystem>(config);
+    stock = std::make_unique<StockSystem>(config, rng);
 
     events->buildFromConfig(); // 事件表随配置构建（新局/读档共用）
 
@@ -30,6 +32,15 @@ GameContext::GameContext(const ConfigManager& config, Random& rng, EventBus& bus
 }
 
 GameContext::~GameContext() = default;
+
+// 破产判定：钱包被炒股债务扣到破产线以下
+bool GameContext::isBankrupt() const {
+    return player->wallet().get() < -config.balance().bankruptcyDebt;
+}
+
+void GameContext::updateBankruptcyFlag() {
+    if (isBankrupt()) flags->set("bankrupt");
+}
 
 // Observer 接线：交易完成 → 玩家自动记账（订阅方只依赖事件，不依赖发布方）
 void GameContext::wireSubscriptions() {
@@ -53,6 +64,7 @@ Json GameContext::toJson() const {
         {"meta", Json{{"location", locationId}, {"rumors", rumors}}},
         {"player", player->toJson()},
         {"market", market->toJson()},
+        {"stock", stock->toJson()},
         {"time", time->toJson()},
         {"events", events->toJson()},
         {"flags", flags->toJson()},
@@ -70,6 +82,7 @@ void GameContext::loadFromJson(const Json& save) {
     }
     if (save.contains("player")) player->fromJson(save["player"]);
     if (save.contains("market")) market->fromJson(save["market"]);
+    if (save.contains("stock")) stock->fromJson(save["stock"]);
     if (save.contains("time")) time->fromJson(save["time"]);
     if (save.contains("events")) events->fromJson(save["events"]);
     if (save.contains("flags")) flags->fromJson(save["flags"]);

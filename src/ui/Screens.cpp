@@ -1,5 +1,7 @@
 #include "ui/Screens.h"
 
+#include <cmath>
+#include <cstdio>
 #include <iostream>
 
 #include "actions/Commands.h"
@@ -12,6 +14,7 @@
 #include "player/Inventory.h"
 #include "player/Player.h"
 #include "player/TradeSystem.h"
+#include "stock/StockSystem.h"
 #include "story/NpcSystem.h"
 #include "story/StoryFlags.h"
 #include "time/TimeSystem.h"
@@ -21,6 +24,33 @@
 namespace {
 
 std::string money(int v) { return "¥" + std::to_string(v); }
+
+std::string money(double v) { return "¥" + std::to_string(static_cast<long long>(v)); }
+
+std::string fmtPrice(double v) {
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%.2f", v);
+    return buf;
+}
+
+// ASCII 迷你走势图（对应 bilibili fx-simple 的折线图）
+std::string sparkline(const std::vector<double>& v, std::size_t width) {
+    static const char* blocks[] = {" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"};
+    if (v.empty()) return "";
+    std::size_t start = v.size() > width ? v.size() - width : 0;
+    double lo = v[start], hi = v[start];
+    for (std::size_t i = start; i < v.size(); ++i) {
+        lo = std::min(lo, v[i]);
+        hi = std::max(hi, v[i]);
+    }
+    if (hi - lo < 1e-9) hi = lo + 1e-9;
+    std::string out;
+    for (std::size_t i = start; i < v.size(); ++i) {
+        int level = static_cast<int>((v[i] - lo) / (hi - lo) * 7.99);
+        out += blocks[level];
+    }
+    return out;
+}
 
 } // namespace
 
@@ -56,6 +86,8 @@ void CampusScreen::draw() {
            std::to_string(c->time->apPerWeek()));
     line("现金 " + console::paint(money(c->player->wallet().get()), console::GREEN) +
          " ｜ 平时分 " + std::to_string(c->player->studyScore()) +
+         " ｜ 体力 " + std::to_string(c->player->energy().get()) + "/" +
+         std::to_string(c->player->energy().max()) +
          " ｜ 背包 " + std::to_string(c->player->inventory().usedSlots()) + "/" +
          std::to_string(c->player->inventory().capacity()) + " 格");
     line("当前地点：" + console::paint(loc ? loc->name : c->locationId, console::YELLOW) +
@@ -70,7 +102,7 @@ void CampusScreen::draw() {
     std::string social = "[5]社交";
     if (loc && !loc->npcId.empty() && c->config.npc(loc->npcId))
         social = "[5]社交(" + c->config.npc(loc->npcId)->name + ")";
-    line("[1]移动  [2]市场  [3]打工  [4]学习  " + social + "  [6]休息");
+    line("[1]移动  [2]市场  [3]打工  [4]学习  " + social + "  [6]休息  [x]炒股");
     line("[7]背包  [8]结束本周  [9]存档  [0]读档  [h]帮助  [q]回标题");
 }
 
@@ -86,6 +118,7 @@ void CampusScreen::handleInput(const std::string& in) {
     else if (cmd == "8") game_.requestEndWeek();
     else if (cmd == "9") game_.screens().push(std::make_unique<SaveLoadScreen>(game_, true));
     else if (cmd == "0") game_.screens().push(std::make_unique<SaveLoadScreen>(game_, false));
+    else if (cmd == "x") game_.screens().push(std::make_unique<StockScreen>(game_));
     else if (cmd == "h") game_.screens().push(std::make_unique<HelpScreen>(game_));
     else if (cmd == "q") game_.backToTitle();
 }
@@ -258,6 +291,91 @@ void InventoryScreen::handleInput(const std::string& in) {
     game_.screens().pop(); // 任意键返回
 }
 
+// ================= 炒股（bilibili 模拟器风） =================
+
+void StockScreen::draw() {
+    GameContext* c = game_.ctx();
+    if (!c) return;
+    const StockSystem* s = c->stock.get();
+    header("浦江文旅（SHU）· 炒股模拟器 · 体力 " +
+           std::to_string(c->player->energy().get()) + "/" +
+           std::to_string(c->player->energy().max()));
+    // 现价与涨跌
+    const auto& hist = s->history();
+    double prev = hist.size() >= 2 ? hist[hist.size() - 2] : s->price();
+    double pct = prev > 1e-9 ? (s->price() - prev) / prev * 100.0 : 0.0;
+    char pctBuf[32];
+    std::snprintf(pctBuf, sizeof(pctBuf), "%+.2f%%", pct);
+    std::string colored = console::paint(std::string("现价 ¥") + fmtPrice(s->price()) + "  " + pctBuf,
+                                         pct >= 0 ? console::RED : console::GREEN);
+    line(colored + "（新手胜率 ≈ " +
+         std::to_string(static_cast<int>(std::round((1.0 - s->effectiveFailProb(*c)) * 100))) + "%——庄家最爱大一新生）");
+    line(console::paint(sparkline(hist, 44), console::YELLOW));
+    rule();
+    if (!s->notice().empty()) line(console::paint(s->notice(), console::RED));
+    line("持仓 " + std::to_string(s->shares()) + " 股（成本 ¥" + fmtPrice(s->avgCost()) + "/股）"
+         " ｜ 市值 " + money(s->positionValue()) +
+         " ｜ 浮动盈亏 " + console::paint((s->unrealizedPnl() >= 0 ? "+" : "") + std::to_string(static_cast<long long>(s->unrealizedPnl())),
+                                          s->unrealizedPnl() >= 0 ? console::RED : console::GREEN));
+    line("融资负债 " + console::paint(money(static_cast<double>(s->loan())),
+                                       s->loan() > 0 ? console::RED : console::DIM) +
+         " ｜ 净持仓 " + money(s->equity()) + " ｜ 杠杆 x" + std::to_string(s->leverage()));
+    line("现金 " + money(c->player->wallet().get()) +
+         " ｜ 破产线：欠债 ≥ " + money(static_cast<double>(c->config.balance().bankruptcyDebt)));
+    rule();
+    if (!feedback_.empty()) line(console::paint(feedback_, console::CYAN));
+    line("b <金额|all> 买入（耗体力 15）   s all 清仓（耗体力 15）   l 1|2|5 切杠杆   q 返回");
+}
+
+void StockScreen::handleInput(const std::string& in) {
+    GameContext* c = game_.ctx();
+    if (!c) return;
+    std::string cmd = strutil::toLower(strutil::trim(in));
+    if (cmd == "q") {
+        game_.screens().pop();
+        return;
+    }
+    auto tokens = strutil::split(cmd);
+    if (tokens.empty()) return;
+    StockSystem* s = c->stock.get();
+
+    if (tokens[0] == "l" && tokens.size() >= 2) {
+        int lev = -1;
+        try {
+            lev = std::stoi(tokens[1]);
+        } catch (...) {
+            feedback_ = "杠杆要是数字（1/2/5）";
+            return;
+        }
+        TradeResult r = s->setLeverage(lev);
+        feedback_ = r.msg;
+        return;
+    }
+    if (tokens[0] == "s") {
+        TradeResult r = s->sellAll(*c);
+        feedback_ = r.msg;
+        game_.checkBankruptcy(); // 清仓偿还融资后可能确认破产
+        return;
+    }
+    if (tokens[0] == "b" && tokens.size() >= 2) {
+        int yuan = 0;
+        if (tokens[1] == "all") yuan = c->player->wallet().get();
+        else {
+            try {
+                yuan = std::stoi(tokens[1]);
+            } catch (...) {
+                feedback_ = "金额要是数字或 all";
+                return;
+            }
+        }
+        TradeResult r = s->buy(*c, yuan);
+        feedback_ = r.msg;
+        game_.checkBankruptcy();
+        return;
+    }
+    feedback_ = "输入格式：b <金额|all> / s all / l <1|2|5> / q";
+}
+
 // ================= 事件对话框 =================
 
 void EventDialogScreen::draw() {
@@ -361,6 +479,10 @@ void EndingScreen::draw() {
     int portfolio = c->trade->estimatePortfolioValue(*c);
     line("期末总资产（现金+库存估值）：" + money(c->player->wallet().get() + portfolio) +
          "（目标 " + money(c->config.balance().targetMoney) + "）");
+    if (c->flags->has("bankrupt"))
+        line(console::paint("债务状况：欠债 ¥" + std::to_string(-c->player->wallet().get()) +
+                                " —— 征信已破产，本项目提前终止",
+                            console::RED));
     line("平时分：" + std::to_string(c->player->studyScore()) +
          (c->flags->has("failed") ? "（挂科）" : "（未挂科）"));
     line("好感：室友 " + std::to_string(c->npcs->affinity("roommate")) +
@@ -382,6 +504,8 @@ void HelpScreen::draw() {
     header("玩法说明");
     line("· 一学期 16 个教学周 + 第 17、18 周考试周（共 18 周），每周 6 个行动点（1 点 = 1 天），周日结算。");
     line("· 移动/打工/学习/社交/休息各耗 1 点；同一地点内买卖不耗点。");
+    line("· 炒股：手机随时买卖「浦江文旅（SHU）」，耗体力不耗行动点；可上杠杆融资。");
+    line("  新手胜率只有 ~38%，爆仓会欠债——欠债超过 ¥3000 触发《破产清算》结局。");
     line("· 低买高卖赚差价：留意地点系数、每周趋势和需求高峰（期中第 8 周、考试季 15~18 周）。");
     line("· 考试周学习有冲刺加成（图书馆 +9 分），教材/咖啡/打印额度价格飞涨。");
     line("· 每周生活费自动扣除；期末总资产 ≥ ¥12000 + 不挂科 + 一位好友 → 好结局。");

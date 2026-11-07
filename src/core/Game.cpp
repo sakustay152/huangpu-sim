@@ -8,6 +8,7 @@
 #include "events/EventScheduler.h"
 #include "events/GameEvent.h"
 #include "player/Player.h"
+#include "story/StoryFlags.h"
 #include "time/TimeSystem.h"
 #include "util/JsonUtil.h"
 #include "util/StringUtils.h"
@@ -117,10 +118,25 @@ void Game::performAction(std::unique_ptr<ICommand> cmd) {
     ActionOutcome out = Session::runAction(*c, *cmd);
     c->lastFeedback = out.result.msg;
     if (out.event) queueEventDialog(out.event);
+    checkBankruptcy(); // 行动中的股价波动可能触发爆仓欠债
     // 行动点耗尽 → 自动进入周日结算
     if (out.result.ok && out.result.consumedAp && c->time->actionsLeft() == 0 &&
         !c->time->isSemesterOver()) {
         requestEndWeek();
+    }
+}
+
+// 炒股爆仓欠债超过破产线 → 立即终止本学期，进入《破产清算》结局
+void Game::checkBankruptcy() {
+    GameContext* c = ctx_.get();
+    if (!c || endingPending_ || chosenEnding_) return;
+    if (c->flags->has("bankrupt") && !c->time->isSemesterOver()) {
+        chosenEnding_ = EndingJudge::judge(*c); // priority=0 的破产结局优先生效
+        EndingDecidedEvent e{chosenEnding_->id, chosenEnding_->title};
+        bus().publish(e);
+        endingPending_ = true;
+        pendingDialogs_.clear();
+        screens_.popAll(); // 当前界面全部退役，resolveFlow 会推入结局屏
     }
 }
 
@@ -134,6 +150,15 @@ void Game::requestEndWeek() {
     // 每周日自动存档（分工 7.2）
     std::string err;
     saveGame(SaveManager::kAutoSlot, err);
+
+    if (c->flags->has("bankrupt")) {
+        // 本周爆仓欠债超过破产线：先看结算报告，关闭后直接进破产结局
+        chosenEnding_ = EndingJudge::judge(*c);
+        bus().publish(EndingDecidedEvent{chosenEnding_->id, chosenEnding_->title});
+        endingPending_ = true;
+        queueWeeklyReport();
+        return;
+    }
 
     queueWeeklyReport(); // 周报最先弹出
     if (c->time->isSemesterOver()) {

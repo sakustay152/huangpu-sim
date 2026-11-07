@@ -45,6 +45,28 @@ struct BalanceDef {
     double kaoyanDiscount = 0.9;  // 学长线：考研资料进货折扣
     double innerTicketBonus = 1.25; // 学姐线：演出门票卖出加成
     double seniorWorkBonus = 1.2; // 学长线：打工日薪加成
+
+    // ---- 炒股模拟器（灵感：bilibili 炒外汇模拟器；新手失败率调高） ----
+    double stockStartPrice = 10.0;     // 标的「浦江文旅（SHU）」起始价
+    double stockVolMin = 0.01;         // 单步最小波动
+    double stockVolMax = 0.06;         // 单步最大波动
+    double stockFailProb = 0.62;       // 持仓时下跌概率（庄家最爱大一新生）
+    double stockCrashProb = 0.03;      // 黑天鹅暴跌概率
+    double stockCrashDrop = 0.25;      // 暴跌幅度
+    double stockBoomProb = 0.02;       // 暴涨概率
+    double stockBoomRise = 0.30;       // 暴涨幅度
+    double stockFeeRate = 0.005;       // 手续费率
+    double stockLoanWeeklyRate = 0.05; // 融资周利率
+    std::vector<int> stockLeverages = {1, 2, 5}; // 可选杠杆倍数
+    // ---- 体力（现阶段只有炒股消耗） ----
+    int staminaMax = 100;
+    int staminaStockCost = 15;         // 每次买卖耗体力
+    int staminaRestGain = 40;          // 休息恢复
+    int staminaWeeklyRecover = 30;     // 周结算恢复
+    int staminaLowThreshold = 30;      // 低体力阈值
+    double staminaLowFailBonus = 0.15; // 低体力时额外下跌概率
+    // ---- 破产 ----
+    int bankruptcyDebt = 3000;         // 欠债超过该值 → 《破产清算》结局
 };
 
 // ---- goods.json：商品定义 ----

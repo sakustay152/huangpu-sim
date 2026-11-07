@@ -60,6 +60,18 @@ protected:
     void handleInput(const std::string& in) override;
 };
 
+class StockScreen : public ConsoleScreen {
+public:
+    using ConsoleScreen::ConsoleScreen;
+    const char* id() const override { return "stock"; }
+protected:
+    void draw() override;
+    void handleInput(const std::string& in) override;
+
+private:
+    std::string feedback_ = "股价随你的每次行动与周日结算波动；买卖耗体力，新手慎用杠杆。";
+};
+
 class EventDialogScreen : public ConsoleScreen {
 public:
     EventDialogScreen(Game& game, const GameEvent* ev) : ConsoleScreen(game), ev_(ev) { modal_ = true; }

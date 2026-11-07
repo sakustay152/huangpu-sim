@@ -19,6 +19,7 @@ class EventScheduler;
 class StoryFlags;
 class NpcSystem;
 class TradeSystem;
+class StockSystem;
 class EventBus;
 class Random;
 class ConfigManager;
@@ -51,11 +52,16 @@ public:
     std::unique_ptr<StoryFlags> flags;      // D：剧情 flag
     std::unique_ptr<NpcSystem> npcs;        // D：好感
     std::unique_ptr<TradeSystem> trade;     // C：交易
+    std::unique_ptr<StockSystem> stock;     // 炒股（手机随时交易，耗体力）
 
     // ---- 运行期共享状态 ----
     std::string locationId = "dorm";        // 当前地点
     std::vector<std::string> rumors;        // 本周看到的情报文本
     std::string lastFeedback;               // 最近一次行动的反馈（UI 显示用）
+
+    // ---- 破产判定（炒股爆仓欠债） ----
+    bool isBankrupt() const;                // 欠债超过破产线
+    void updateBankruptcyFlag();            // 欠债超线 → 设置 bankrupt flag
 
 private:
     void wireSubscriptions(); // EventBus 订阅（Observer 模式的接线处）

@@ -10,6 +10,7 @@
 #include "economy/Market.h"
 #include "events/GameEvent.h"
 #include "events/EventScheduler.h"
+#include "stock/StockSystem.h"
 #include "story/StoryFlags.h"
 #include "time/TimeSystem.h"
 
@@ -28,6 +29,8 @@ ActionOutcome Session::runAction(GameContext& ctx, const ICommand& cmd) {
     // 通过 ITimeListener 接口通知行情（面向接口，不面向实现）
     ITimeListener& marketListener = *ctx.market;
     marketListener.onDayTick();
+    // 股价随每次行动波动一格（bilibili 模拟器式随机走；持仓爆仓会在此触发）
+    ctx.stock->onTick(ctx);
     ctx.bus.publish(ActionTakenEvent{cmd.name()});
 
     // 概率摇随机事件（数据驱动，分工 8.2）

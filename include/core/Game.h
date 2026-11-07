@@ -46,6 +46,7 @@ public:
     bool loadGame(int slot, std::string& err);
     bool saveGame(int slot, std::string& err);
     void performAction(std::unique_ptr<ICommand> cmd); // 执行一次行动（含事件摇取）
+    void checkBankruptcy();                            // 炒股爆仓欠债 → 立即进入破产结局
     void requestEndWeek();                             // 周日结算 + 周报/固定事件入队
     void backToTitle();
     void exitApp() { running_ = false; }

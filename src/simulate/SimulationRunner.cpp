@@ -48,6 +48,7 @@ SimGameResult SimulationRunner::runOne(const std::string& strategyName, std::uin
             stall = 0;
         }
         minMoney = std::min(minMoney, ctx.player->wallet().get());
+        if (ctx.flags->has("bankrupt")) break; // 炒股爆仓破产（Bot 不炒股，防御性检查）
         if (!ctx.time->canAct()) {
             WeekSettlement settle(ctx);
             settle.run();

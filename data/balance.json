@@ -35,6 +35,28 @@
   "innerTicketBonus": 1.25,
   "seniorWorkBonus": 1.2,
 
+  // 炒股模拟器（灵感：bilibili 炒外汇模拟器；大一学生失败率调高）
+  "stockStartPrice": 10,
+  "stockVolMin": 0.01,
+  "stockVolMax": 0.06,
+  "stockFailProb": 0.62,
+  "stockCrashProb": 0.03,
+  "stockCrashDrop": 0.25,
+  "stockBoomProb": 0.02,
+  "stockBoomRise": 0.30,
+  "stockFeeRate": 0.005,
+  "stockLoanWeeklyRate": 0.05,
+  "stockLeverages": [1, 2, 5],
+
+  "staminaMax": 100,
+  "staminaStockCost": 15,
+  "staminaRestGain": 40,
+  "staminaWeeklyRecover": 30,
+  "staminaLowThreshold": 30,
+  "staminaLowFailBonus": 0.15,
+
+  "bankruptcyDebt": 3000,
+
   "jobs": {
     "canteen": [120, 160],
     "store": [140, 180],

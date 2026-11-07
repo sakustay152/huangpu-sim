@@ -63,7 +63,9 @@ ActionResult SocialCommand::execute(GameContext& ctx) const {
 
 ActionResult RestCommand::execute(GameContext& ctx) const {
     if (ctx.locationId != "dorm") return {false, false, "回宿舍才能休息"};
+    ctx.player->energy().add(ctx.config.balance().staminaRestGain); // 炒股耗的体力在这里回来
     AffinityEffect effect("roommate", ctx.config.balance().restAffinity);
     std::string detail = effect.apply(ctx);
-    return {true, true, "睡了个好觉，和室友卧谈到半夜：" + detail};
+    return {true, true, "睡了个好觉（体力 +" +
+                            std::to_string(ctx.config.balance().staminaRestGain) + "），和室友卧谈到半夜：" + detail};
 }
