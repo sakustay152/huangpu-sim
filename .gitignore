@@ -1,0 +1,17 @@
+# ---- build artifacts ----
+build/
+*.obj
+*.lib
+*.exe
+*.pdb
+*.ilk
+*.rsp
+
+# ---- runtime saves ----
+saves/
+
+# ---- local tools & secrets (never commit) ----
+tools/mingit/
+tools/mingit.zip
+tools/.gh_token
+tools/device_code.json

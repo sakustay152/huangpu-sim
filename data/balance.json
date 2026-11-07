@@ -1,0 +1,38 @@
+{
+  // 全局数值锚点（分工 3.4 / 3.5）—— 改数值只改这里，不用重编译逻辑
+  // 注：targetMoney 经 1000 局模拟校准（分工 8.9 流程），原始锚点 12000 偏高
+  "startMoney": 3000,
+  "weeklyExpense": 250,
+  "targetMoney": 7500,
+  "weeks": 12,
+  "apPerWeek": 6,
+  "maxSlots": 30,
+
+  "studyStart": 40,
+  "studyGain": 6,
+  "studyDecay": 4,
+  "passScore": 60,
+  "warnScore": 50,
+  "scholarshipScore": 85,
+  "scholarship": 1000,
+  "retakeFee": 2000,
+
+  "socialGain": 15,
+  "restAffinity": 3,
+
+  "eventChance": 0.22,
+  "rumorAccuracy": 0.8,
+  "trendAmp": 0.25,
+  "noiseAmp": 0.06,
+  "seasonAmp": 0.35,
+
+  "kaoyanDiscount": 0.9,
+  "innerTicketBonus": 1.25,
+  "seniorWorkBonus": 1.2,
+
+  "jobs": {
+    "canteen": [120, 160],
+    "store": [140, 180],
+    "westgate": [100, 140]
+  }
+}

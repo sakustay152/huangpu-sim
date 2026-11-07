@@ -1,0 +1,109 @@
+[
+  // ============ 教材资料 ============
+  {
+    "id": "used_book", "name": "二手教材", "category": "教材资料",
+    "basePrice": 25, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "soldAt": ["dorm", "library", "westgate"],
+    "locFactor": { "library": 0.8, "dorm": 1.15, "westgate": 0.95, "canteen": 1.0, "store": 1.0, "club": 1.15 },
+    "peakWeeks": [1, 2, 6, 11, 12],
+    "desc": "学长的旧书里还有重点标注"
+  },
+  {
+    "id": "kaoyan_notes", "name": "考研资料", "category": "教材资料",
+    "basePrice": 40, "spread": 0.08, "slots": 1, "limitPerDay": 25,
+    "soldAt": ["library", "store"],
+    "locFactor": { "library": 0.8, "store": 1.0, "dorm": 1.15, "club": 1.15, "westgate": 1.0, "canteen": 0.95 },
+    "peakWeeks": [6, 11, 12],
+    "desc": "上岸学长的手写笔记复印版"
+  },
+  {
+    "id": "print_credit", "name": "打印额度", "category": "教材资料",
+    "basePrice": 15, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "soldAt": ["library", "store"],
+    "locFactor": { "library": 0.8, "store": 1.05, "dorm": 1.2, "canteen": 1.0, "westgate": 1.0, "club": 1.0 },
+    "peakWeeks": [6, 12],
+    "desc": "期末前人人都缺打印额度"
+  },
+
+  // ============ 饮品零食 ============
+  {
+    "id": "coffee_ticket", "name": "咖啡券", "category": "饮品零食",
+    "basePrice": 12, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "soldAt": ["store", "canteen"],
+    "locFactor": { "store": 0.8, "canteen": 1.0, "library": 1.2, "club": 1.35, "dorm": 1.05, "westgate": 0.95 },
+    "peakWeeks": [9, 11, 12],
+    "desc": "熬夜复习的硬通货"
+  },
+  {
+    "id": "milk_tea", "name": "奶茶券", "category": "饮品零食",
+    "basePrice": 15, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "soldAt": ["canteen", "club"],
+    "locFactor": { "canteen": 0.8, "club": 1.3, "library": 1.15, "dorm": 1.05, "store": 1.0, "westgate": 0.95 },
+    "peakWeeks": [3, 10],
+    "desc": "社团活动的社交货币"
+  },
+  {
+    "id": "snack_box", "name": "零食箱", "category": "饮品零食",
+    "basePrice": 45, "spread": 0.08, "slots": 2, "limitPerDay": 30,
+    "soldAt": ["store", "westgate"],
+    "locFactor": { "store": 0.8, "westgate": 1.15, "dorm": 1.25, "canteen": 1.0, "library": 1.0, "club": 1.05 },
+    "peakWeeks": [10],
+    "desc": "整箱批发，宿舍夜谈必备"
+  },
+
+  // ============ 日用应急 ============
+  {
+    "id": "umbrella", "name": "雨伞", "category": "日用应急",
+    "basePrice": 35, "spread": 0.08, "slots": 1, "limitPerDay": 20,
+    "soldAt": ["store", "westgate", "dorm"],
+    "locFactor": { "store": 0.85, "westgate": 1.25, "dorm": 1.1, "canteen": 1.0, "library": 1.0, "club": 1.0 },
+    "peakWeeks": [],
+    "desc": "天气事件驱动，暴雨天翻倍"
+  },
+
+  // ============ 数码配件 ============
+  {
+    "id": "powerbank", "name": "充电宝", "category": "数码配件",
+    "basePrice": 70, "spread": 0.08, "slots": 1, "limitPerDay": 15,
+    "soldAt": ["store", "westgate"],
+    "locFactor": { "store": 0.8, "westgate": 1.25, "club": 1.15, "library": 1.0, "dorm": 1.1, "canteen": 1.0 },
+    "peakWeeks": [9],
+    "desc": "双十一和停电夜的救星"
+  },
+  {
+    "id": "cable", "name": "数据线", "category": "数码配件",
+    "basePrice": 18, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "soldAt": ["store", "westgate"],
+    "locFactor": { "store": 0.85, "westgate": 1.15, "dorm": 1.1, "canteen": 1.0, "library": 1.0, "club": 1.0 },
+    "peakWeeks": [9],
+    "desc": "永远有人在找数据线"
+  },
+
+  // ============ 活动文创 ============
+  {
+    "id": "badge", "name": "社团徽章", "category": "活动文创",
+    "basePrice": 20, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "soldAt": ["club"],
+    "locFactor": { "club": 0.75, "dorm": 1.3, "westgate": 1.2, "canteen": 1.0, "library": 1.0, "store": 1.0 },
+    "peakWeeks": [2, 3, 10],
+    "desc": "招新季和菊文化节卖得飞快"
+  },
+  {
+    "id": "show_ticket", "name": "演出门票", "category": "活动文创",
+    "basePrice": 80, "spread": 0.1, "slots": 1, "limitPerDay": 6,
+    "soldAt": ["club", "westgate"],
+    "locFactor": { "club": 0.8, "westgate": 1.25, "dorm": 1.15, "canteen": 1.0, "library": 1.0, "store": 1.0 },
+    "peakWeeks": [10],
+    "desc": "热门演出一票难求，限量出售"
+  },
+
+  // ============ 大件二手 ============
+  {
+    "id": "bike", "name": "二手自行车", "category": "大件二手",
+    "basePrice": 320, "spread": 0.05, "slots": 4, "limitPerDay": 2,
+    "soldAt": ["westgate", "dorm"],
+    "locFactor": { "westgate": 0.8, "dorm": 1.2, "canteen": 1.0, "store": 1.0, "library": 1.0, "club": 1.0 },
+    "peakWeeks": [1, 2, 12],
+    "desc": "开学与毕业季硬需求，占 4 格"
+  }
+]

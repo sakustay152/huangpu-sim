@@ -1,0 +1,32 @@
+[
+  {
+    "id": "dorm", "name": "宿舍", "fare": 2,
+    "npcId": "roommate",
+    "desc": "二手群消息不断，也是你的仓库和床"
+  },
+  {
+    "id": "canteen", "name": "第一食堂", "fare": 2,
+    "npcId": "",
+    "desc": "价格稳定、人流量大，可以去窗口帮工"
+  },
+  {
+    "id": "store", "name": "教育超市", "fare": 3,
+    "npcId": "",
+    "desc": "货源最稳的日办渠道，缺什么来什么"
+  },
+  {
+    "id": "library", "name": "图书馆", "fare": 3,
+    "npcId": "senior",
+    "desc": "学习涨平时分；考试周资料需求暴涨"
+  },
+  {
+    "id": "westgate", "name": "西门夜市", "fare": 5,
+    "npcId": "",
+    "desc": "校外货源，进价低风险高，传单招聘贴满墙"
+  },
+  {
+    "id": "club", "name": "大学生活动中心", "fare": 4,
+    "npcId": "xuejie",
+    "desc": "社团活动与演出门票，需求尖峰在招新季"
+  }
+]

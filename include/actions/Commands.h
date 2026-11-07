@@ -1,0 +1,47 @@
+#pragma once
+// ============================================================
+// [actions/Commands] 玩家行动命令（组员 C 主责；A 集成最小版）
+// Command 模式（分工 9）：每个行动一个类，校验在 execute 内部完成，
+// 失败不消耗行动点。可记录/回放（不做撤销）。
+// ============================================================
+#include <string>
+
+#include "core/ICommand.h"
+
+// 移动到某地点（耗 1 点 + 路费）
+class MoveCommand : public ICommand {
+public:
+    explicit MoveCommand(std::string to) : to_(std::move(to)) {}
+    std::string name() const override { return "移动"; }
+    ActionResult execute(GameContext& ctx) const override;
+private:
+    std::string to_;
+};
+
+// 在当前地点打工（食堂/超市/西门有正式岗位，其余地点为打零工）
+class WorkCommand : public ICommand {
+public:
+    std::string name() const override { return "打工"; }
+    ActionResult execute(GameContext& ctx) const override;
+};
+
+// 图书馆学习（+平时分）
+class StudyCommand : public ICommand {
+public:
+    std::string name() const override { return "学习"; }
+    ActionResult execute(GameContext& ctx) const override;
+};
+
+// 与驻地 NPC 社交（+好感）
+class SocialCommand : public ICommand {
+public:
+    std::string name() const override { return "社交"; }
+    ActionResult execute(GameContext& ctx) const override;
+};
+
+// 宿舍休息（和室友卧谈，小幅好感）
+class RestCommand : public ICommand {
+public:
+    std::string name() const override { return "休息"; }
+    ActionResult execute(GameContext& ctx) const override;
+};
