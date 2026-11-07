@@ -43,7 +43,11 @@ void ConfigManager::loadBalance() {
     balance_.startMoney   = ju::getOr(j, "startMoney", 3000);
     balance_.weeklyExpense = ju::getOr(j, "weeklyExpense", 250);
     balance_.targetMoney  = ju::getOr(j, "targetMoney", 12000);
-    balance_.weeks        = ju::getOr(j, "weeks", 12);
+    balance_.weeks        = ju::getOr(j, "weeks", 18);
+    balance_.teachingWeeks = ju::getOr(j, "teachingWeeks", 16);
+    balance_.midtermWeek  = ju::getOr(j, "midtermWeek", 8);
+    balance_.examStartWeek = ju::getOr(j, "examStartWeek", 17);
+    balance_.examStudyBonus = ju::getOr(j, "examStudyBonus", 3);
     balance_.apPerWeek    = ju::getOr(j, "apPerWeek", 6);
     balance_.maxSlots     = ju::getOr(j, "maxSlots", 30);
     balance_.studyStart   = ju::getOr(j, "studyStart", 40);

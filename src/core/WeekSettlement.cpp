@@ -56,11 +56,11 @@ void WeekSettlement::checkMilestones() {
     int week = ctx_.time->week();
     int score = ctx_.player->studyScore();
 
-    if (week == 6 && score < b.warnScore) {
+    if (week == b.midtermWeek && score < b.warnScore) {
         rep_.lines.push_back("【期中警告】平时分 " + std::to_string(score) + " 低于警戒线 " +
                              std::to_string(b.warnScore) + "，期末再不冲刺要挂科了！");
     }
-    if (week == b.weeks) { // 期末周结算
+    if (week == b.weeks) { // 期末周（第 18 周）结算
         if (score < b.passScore) {
             ctx_.flags->set("failed");
             int fee = std::min(b.retakeFee, ctx_.player->wallet().get());

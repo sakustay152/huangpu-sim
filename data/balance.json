@@ -1,10 +1,15 @@
 {
   // 全局数值锚点（分工 3.4 / 3.5）—— 改数值只改这里，不用重编译逻辑
-  // 注：targetMoney 经 1000 局模拟校准（分工 8.9 流程），原始锚点 12000 偏高
+  // 注：学期结构对齐真实上海大学 —— 16 个教学周 + 第 17/18 周考试周（共 18 周）；
+  //     targetMoney 仍为分工文档原始锚点 12000，经模拟器复校准后微调
   "startMoney": 3000,
   "weeklyExpense": 250,
-  "targetMoney": 7500,
-  "weeks": 12,
+  "targetMoney": 12000,
+  "weeks": 18,
+  "teachingWeeks": 16,
+  "midtermWeek": 8,
+  "examStartWeek": 17,
+  "examStudyBonus": 3,
   "apPerWeek": 6,
   "maxSlots": 30,
 

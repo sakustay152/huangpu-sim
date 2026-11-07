@@ -3,7 +3,7 @@
     "id": "partner", "title": "校园合伙人", "priority": 1,
     "text": "你和苏晴的文创小生意做成了：菊文化节的摊位前排队的人绕了半个广场。毕业照那天，你们把第一笔'公司分红'拍在桌上——下学期的学费，不用家里出一分。江风吹过操场，有人向东去追日出，你们向西赶日落，赶在所有人前面。",
     "conditions": [
-      { "type": "totalAssetsMin", "value": 8500 },
+      { "type": "totalAssetsMin", "value": 13500 },
       { "type": "affinityMin", "npc": "xuejie", "value": 80 },
       { "type": "hasFlag", "flag": "club_member" }
     ]
@@ -12,7 +12,7 @@
     "id": "steady", "title": "站稳脚跟", "priority": 2,
     "text": "学期最后一夜，你在账本上写下最后一笔。总资产越过那条线的时候，窗外正好是黄浦江上的灯。不惊天动地，但你在这个城市站稳了脚跟——还有一些人，愿意在下学期继续和你拼桌吃饭。",
     "conditions": [
-      { "type": "totalAssetsMin", "value": 7500 },
+      { "type": "totalAssetsMin", "value": 12000 },
       { "type": "hasFlag", "flag": "not:failed" },
       { "type": "affinityAnyMin", "value": 60 }
     ]

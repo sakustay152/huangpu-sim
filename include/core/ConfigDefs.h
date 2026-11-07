@@ -15,7 +15,11 @@ struct BalanceDef {
     int startMoney = 3000;        // 启动资金
     int weeklyExpense = 250;      // 每周支出
     int targetMoney = 12000;      // 目标资产
-    int weeks = 12;               // 学期周数
+    int weeks = 18;               // 学期总周数（16 教学周 + 2 考试周）
+    int teachingWeeks = 16;       // 教学周数
+    int midtermWeek = 8;          // 期中预警周
+    int examStartWeek = 17;       // 考试周起始（第 17-18 周）
+    int examStudyBonus = 3;       // 考试周图书馆冲刺加成
     int apPerWeek = 6;            // 每周行动点
     int maxSlots = 30;            // 背包格数
 

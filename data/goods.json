@@ -5,7 +5,7 @@
     "basePrice": 25, "spread": 0.08, "slots": 1, "limitPerDay": 40,
     "soldAt": ["dorm", "library", "westgate"],
     "locFactor": { "library": 0.8, "dorm": 1.15, "westgate": 0.95, "canteen": 1.0, "store": 1.0, "club": 1.15 },
-    "peakWeeks": [1, 2, 6, 11, 12],
+    "peakWeeks": [1, 2, 8, 15, 16, 17, 18],
     "desc": "学长的旧书里还有重点标注"
   },
   {
@@ -13,7 +13,7 @@
     "basePrice": 40, "spread": 0.08, "slots": 1, "limitPerDay": 25,
     "soldAt": ["library", "store"],
     "locFactor": { "library": 0.8, "store": 1.0, "dorm": 1.15, "club": 1.15, "westgate": 1.0, "canteen": 0.95 },
-    "peakWeeks": [6, 11, 12],
+    "peakWeeks": [8, 15, 16, 17, 18],
     "desc": "上岸学长的手写笔记复印版"
   },
   {
@@ -21,7 +21,7 @@
     "basePrice": 15, "spread": 0.08, "slots": 1, "limitPerDay": 40,
     "soldAt": ["library", "store"],
     "locFactor": { "library": 0.8, "store": 1.05, "dorm": 1.2, "canteen": 1.0, "westgate": 1.0, "club": 1.0 },
-    "peakWeeks": [6, 12],
+    "peakWeeks": [8, 16, 17, 18],
     "desc": "期末前人人都缺打印额度"
   },
 
@@ -31,7 +31,7 @@
     "basePrice": 12, "spread": 0.08, "slots": 1, "limitPerDay": 40,
     "soldAt": ["store", "canteen"],
     "locFactor": { "store": 0.8, "canteen": 1.0, "library": 1.2, "club": 1.35, "dorm": 1.05, "westgate": 0.95 },
-    "peakWeeks": [9, 11, 12],
+    "peakWeeks": [9, 15, 16, 17, 18],
     "desc": "熬夜复习的硬通货"
   },
   {
@@ -103,7 +103,7 @@
     "basePrice": 320, "spread": 0.05, "slots": 4, "limitPerDay": 2,
     "soldAt": ["westgate", "dorm"],
     "locFactor": { "westgate": 0.8, "dorm": 1.2, "canteen": 1.0, "store": 1.0, "library": 1.0, "club": 1.0 },
-    "peakWeeks": [1, 2, 12],
-    "desc": "开学与毕业季硬需求，占 4 格"
+    "peakWeeks": [1, 2, 18],
+    "desc": "开学与学期末搬家季硬需求，占 4 格"
   }
 ]
