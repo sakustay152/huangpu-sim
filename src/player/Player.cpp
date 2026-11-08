@@ -9,6 +9,8 @@
 Player::Player(const ConfigManager& cfg)
     : inventory_(cfg.balance().maxSlots),
       energy_(cfg),
+      stockSkill_(cfg.balance().stockSkillStart),
+      stockSkillMax_(cfg.balance().stockSkillMax),
       studyScore_(cfg.balance().studyStart) {}
 
 void Player::onTradeCompleted(const TradeCompletedEvent& e) {
@@ -27,6 +29,7 @@ Json Player::toJson() const {
         {"inventory", inventory_.toJson()},
         {"studyScore", studyScore_},
         {"stamina", energy_.toJson()},
+        {"stockSkill", stockSkill_},
         {"ledger", ledger_},
     };
 }
@@ -35,6 +38,9 @@ void Player::fromJson(const Json& j) {
     if (j.contains("wallet")) wallet_.fromJson(j["wallet"]);
     if (j.contains("inventory")) inventory_.fromJson(j["inventory"]);
     studyScore_ = ju::getOr(j, "studyScore", studyScore_);
+    stockSkill_ = ju::getOr(j, "stockSkill", stockSkill_);
+    if (stockSkill_ < 0) stockSkill_ = 0;
+    if (stockSkill_ > stockSkillMax_) stockSkill_ = stockSkillMax_;
     if (j.contains("stamina")) energy_.fromJson(j["stamina"]);
     ledger_.clear();
     if (j.contains("ledger") && j["ledger"].is_array())

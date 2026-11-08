@@ -86,6 +86,17 @@ void ConfigManager::loadBalance() {
             balance_.stockLeverages.push_back(l.get<int>());
     if (balance_.stockLeverages.empty()) balance_.stockLeverages = {1, 2, 5};
 
+    // 股力
+    balance_.stockSkillStart     = ju::getOr(j, "stockSkillStart", 5);
+    balance_.stockSkillMax       = ju::getOr(j, "stockSkillMax", 100);
+    balance_.stockSkillFactor    = ju::getOr(j, "stockSkillFactor", 0.003);
+    balance_.stockSkillFailFloor = ju::getOr(j, "stockSkillFailFloor", 0.25);
+    balance_.learnStockStaminaCost = ju::getOr(j, "learnStockStaminaCost", 30);
+    balance_.learnStockGainMin   = ju::getOr(j, "learnStockGainMin", 6);
+    balance_.learnStockGainMax   = ju::getOr(j, "learnStockGainMax", 10);
+    balance_.stockBarsKeep       = ju::getOr(j, "stockBarsKeep", 60);
+    balance_.stockIntraSteps     = ju::getOr(j, "stockIntraSteps", 6);
+
     // 体力
     balance_.staminaMax           = ju::getOr(j, "staminaMax", 100);
     balance_.staminaStockCost     = ju::getOr(j, "staminaStockCost", 15);

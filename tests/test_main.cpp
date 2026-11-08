@@ -245,6 +245,44 @@ int main(int argc, char** argv) {
             Json pj = sctx.player->toJson();
             lctx.player->fromJson(pj);
             check(lctx.player->energy().get() == sctx.player->energy().get(), "体力存档往返");
+            check(lctx.player->stockSkill() == sctx.player->stockSkill(), "股力存档往返");
+        }
+
+        // ---------- 11. K 线形态 / 股力 / 学股市知识 ----------
+        std::cout << "\n== K线 / 股力 ==\n";
+        {
+            GameContext kctx(cfg, rng, bus);
+            kctx.initNewGame();
+
+            // onTick 生成一根形态合法的 K 线
+            std::size_t n0 = kctx.stock->bars().size();
+            kctx.stock->onTick(kctx);
+            check(kctx.stock->bars().size() == n0 + 1, "onTick 生成一根新 K 线");
+            const StockBar& b = kctx.stock->bars().back();
+            check(b.h >= b.l && b.c <= b.h && b.c >= b.l && b.o <= b.h && b.o >= b.l,
+                  "K 线 OHLC 形态合法（高≥开收低≥低）");
+
+            // 学股市知识：耗大量体力 + 行动点，提升股力
+            EnergySystem& ken = kctx.player->energy();
+            int staminaBefore = ken.get();
+            int skill0 = kctx.player->stockSkill();
+            auto out = Session::runAction(kctx, LearnStockCommand());
+            check(out.result.ok && out.result.consumedAp, "学股市知识消耗 1 行动点");
+            check(ken.get() == staminaBefore - cfg.balance().learnStockStaminaCost,
+                  "学股市知识消耗大量体力");
+            check(kctx.player->stockSkill() >= skill0 + cfg.balance().learnStockGainMin &&
+                      kctx.player->stockSkill() <= skill0 + cfg.balance().learnStockGainMax,
+                  "股力在增益区间内提升");
+
+            // 股力越高 → 收阴概率越低（但有下限，永不稳赚）
+            double pLow = kctx.stock->effectiveFailProb(kctx);
+            kctx.player->addStockSkill(cfg.balance().stockSkillMax); // 拉满
+            double pMax = kctx.stock->effectiveFailProb(kctx);
+            check(pMax < pLow, "股力越高 K 线越偏向赚钱方向");
+            check(pMax >= cfg.balance().stockSkillFailFloor - 1e-9, "满股力仍有最低收阴概率（可能亏钱）");
+            double expected = std::max(cfg.balance().stockFailProb - kctx.player->stockSkill() * cfg.balance().stockSkillFactor,
+                                       cfg.balance().stockSkillFailFloor);
+            check(std::abs(pMax - expected) < 1e-9, "收阴概率 = 基准 - 股力修正（下限封顶）");
         }
 
     } catch (const std::exception& e) {

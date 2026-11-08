@@ -48,6 +48,17 @@
   "stockLoanWeeklyRate": 0.05,
   "stockLeverages": [1, 2, 5],
 
+  // 股力：学股市知识（耗大量体力）提升，让 K 线更偏向赚钱方向（但永不保证）
+  "stockSkillStart": 5,
+  "stockSkillMax": 100,
+  "stockSkillFactor": 0.003,
+  "stockSkillFailFloor": 0.25,
+  "learnStockStaminaCost": 30,
+  "learnStockGainMin": 6,
+  "learnStockGainMax": 10,
+  "stockBarsKeep": 60,
+  "stockIntraSteps": 6,
+
   "staminaMax": 100,
   "staminaStockCost": 15,
   "staminaRestGain": 40,

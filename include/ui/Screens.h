@@ -6,7 +6,9 @@
 //                             EventDialog/WeeklyReport/SaveLoad/Ending/Help
 // 每个屏幕 = 一次"状态"：render() 决定显示，handleInput() 决定转移。
 // ============================================================
+#include <functional>
 #include <string>
+#include <vector>
 
 #include "ui/ConsoleUI.h"
 
@@ -60,16 +62,32 @@ protected:
     void handleInput(const std::string& in) override;
 };
 
+// 炒股屏：bilibili fx-simple 风格 —— K 线图 + 鼠标点击按钮交易/杠杆/学股市知识
+// 真实控制台下接管输入循环（ENABLE_MOUSE_INPUT），行输入重定向时回退键盘命令
 class StockScreen : public ConsoleScreen {
 public:
     using ConsoleScreen::ConsoleScreen;
     const char* id() const override { return "stock"; }
+    void onEnter() override; // 接管输入：鼠标点击按钮；退出后自弹栈
 protected:
     void draw() override;
-    void handleInput(const std::string& in) override;
+    void handleInput(const std::string& in) override; // 键盘回退模式
 
 private:
-    std::string feedback_ = "股价随你的每次行动与周日结算波动；买卖耗体力，新手慎用杠杆。";
+    struct Button {
+        int row = -1;
+        int c0 = 0;
+        int c1 = 0;
+        std::function<void()> action;
+    };
+    std::vector<Button> buttons_; // draw() 时登记，点击按行列命中
+    std::string feedback_ = "股价随你的每次行动与周日结算走一根 K 线；买卖耗体力，新手慎用杠杆。";
+    bool lineFallback_ = false;
+
+    void clickBuy(int yuan);
+    void clickSellAll();
+    void clickCycleLeverage();
+    void clickLearn();
 };
 
 class EventDialogScreen : public ConsoleScreen {

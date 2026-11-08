@@ -58,6 +58,16 @@ struct BalanceDef {
     double stockFeeRate = 0.005;       // 手续费率
     double stockLoanWeeklyRate = 0.05; // 融资周利率
     std::vector<int> stockLeverages = {1, 2, 5}; // 可选杠杆倍数
+    // ---- 股力（学股市知识提升；决定 K 线倾向，但不保证赚钱/亏钱） ----
+    int stockSkillStart = 5;           // 初始股力
+    int stockSkillMax = 100;           // 股力上限
+    double stockSkillFactor = 0.003;   // 每点股力降低的收阴概率
+    double stockSkillFailFloor = 0.25; // 满股力时收阴概率下限（仍可能亏钱）
+    int learnStockStaminaCost = 30;    // 学股市知识耗体力（大量）
+    int learnStockGainMin = 6;         // 每次学到的股力下限
+    int learnStockGainMax = 10;        // 每次学到的股力上限
+    int stockBarsKeep = 60;            // 保留的 K 线条数
+    int stockIntraSteps = 6;           // 每根 K 线内部的子步数
     // ---- 体力（现阶段只有炒股消耗） ----
     int staminaMax = 100;
     int staminaStockCost = 15;         // 每次买卖耗体力

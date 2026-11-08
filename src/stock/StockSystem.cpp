@@ -22,11 +22,15 @@ std::string fmtPrice(double v) {
 StockSystem::StockSystem(const ConfigManager& cfg, Random& rng)
     : cfg_(cfg),
       rng_(rng),
-      price_(cfg.balance().stockStartPrice),
-      history_{cfg.balance().stockStartPrice} {}
+      stockRng_(rng.next()), // 行情独立随机流：一次播种，不扰动主流
+      price_(cfg.balance().stockStartPrice) {
+    StockBar first;
+    first.o = first.h = first.l = first.c = price_;
+    bars_.push_back(first);
+}
 
 double StockSystem::price() const { return price_; }
-const std::vector<double>& StockSystem::history() const { return history_; }
+const std::vector<StockBar>& StockSystem::bars() const { return bars_; }
 int StockSystem::shares() const { return shares_; }
 double StockSystem::avgCost() const { return shares_ > 0 ? costBasis_ / shares_ : 0.0; }
 long long StockSystem::loan() const { return loan_; }
@@ -38,40 +42,74 @@ const std::vector<int>& StockSystem::leverageOptions() const { return cfg_.balan
 const std::string& StockSystem::notice() const { return notice_; }
 
 double StockSystem::effectiveFailProb(const GameContext& ctx) const {
-    double p = cfg_.balance().stockFailProb;
-    if (ctx.player->energy().isLow()) p += cfg_.balance().staminaLowFailBonus;
+    const BalanceDef& b = cfg_.balance();
+    // 股力越高，持仓时下一根 K 线收阴概率越低（但永远保底 25%，不会稳赚）
+    double p = b.stockFailProb - ctx.player->stockSkill() * b.stockSkillFactor;
+    p = std::max(p, b.stockSkillFailFloor);
+    if (ctx.player->energy().isLow()) p += b.staminaLowFailBonus;
     return std::min(p, 0.95);
 }
 
 void StockSystem::onTick(GameContext& ctx) {
     const BalanceDef& b = cfg_.balance();
-    double drift = 0.0;
-    if (shares_ > 0) {
-        // 大一学生是被收割对象：持仓时下跌概率明显高于上涨（且越累越惨）
-        drift = rng_.chance(effectiveFailProb(ctx))
-                    ? -rng_.uniform(b.stockVolMin, b.stockVolMax)
-                    : +rng_.uniform(b.stockVolMin, b.stockVolMax);
-    } else {
-        // 空仓看戏时市场相对中性
-        drift = (rng_.chance(0.5) ? 1.0 : -1.0) *
-                rng_.uniform(b.stockVolMin * 0.5, b.stockVolMax * 0.8);
+    bool holding = shares_ > 0;
+    double failP = holding ? effectiveFailProb(ctx) : 0.5;
+
+    // 一根 K 线：开盘 = 前收盘，内部再走若干子步形成高低价，收盘决定下一根开盘
+    StockBar bar;
+    bar.o = price_;
+    bar.h = price_;
+    bar.l = price_;
+    double p = price_;
+    for (int i = 0; i < b.stockIntraSteps; ++i) {
+        double drift;
+        if (holding) {
+            // 大一学生是被收割对象：股力低时 K 线更倾向收阴
+            drift = stockRng_.chance(failP)
+                        ? -stockRng_.uniform(b.stockVolMin, b.stockVolMax)
+                        : +stockRng_.uniform(b.stockVolMin, b.stockVolMax);
+        } else {
+            drift = (stockRng_.chance(0.5) ? 1.0 : -1.0) *
+                    stockRng_.uniform(b.stockVolMin * 0.4, b.stockVolMax * 0.5);
+        }
+        p = std::clamp(p * (1.0 + drift), 0.5, 999.0);
+        bar.h = std::max(bar.h, p);
+        bar.l = std::min(bar.l, p);
     }
-    if (rng_.chance(b.stockCrashProb)) drift -= b.stockCrashDrop; // 黑天鹅
-    if (rng_.chance(b.stockBoomProb)) drift += b.stockBoomRise;   // 天降横财
-    step(ctx, drift);
+    if (stockRng_.chance(b.stockCrashProb)) { // 黑天鹅
+        p = std::clamp(p * (1.0 - b.stockCrashDrop), 0.5, 999.0);
+        bar.h = std::max(bar.h, p);
+        bar.l = std::min(bar.l, p);
+    }
+    if (stockRng_.chance(b.stockBoomProb)) { // 天降横财
+        p = std::clamp(p * (1.0 + b.stockBoomRise), 0.5, 999.0);
+        bar.h = std::max(bar.h, p);
+        bar.l = std::min(bar.l, p);
+    }
+    step(ctx, p, bar);
 }
 
 void StockSystem::applyExternalShock(GameContext& ctx, double mult) {
     if (mult <= 0.0) mult = 0.1;
-    step(ctx, mult - 1.0);
+    double target = std::clamp(price_ * mult, 0.5, 999.0);
+    StockBar bar;
+    bar.o = price_;
+    bar.h = std::max(price_, target);
+    bar.l = std::min(price_, target);
+    bar.c = target;
+    step(ctx, target, bar);
 }
 
-void StockSystem::step(GameContext& ctx, double drift) {
+void StockSystem::step(GameContext& ctx, double close, const StockBar& bar) {
     notice_.clear();
-    price_ = std::clamp(price_ * (1.0 + drift), 0.5, 999.0);
-    price_ = std::round(price_ * 100.0) / 100.0;
-    history_.push_back(price_);
-    if (history_.size() > 120) history_.erase(history_.begin());
+    price_ = std::round(close * 100.0) / 100.0;
+    StockBar fixed = bar;
+    fixed.c = price_;
+    fixed.h = std::round(std::max(fixed.h, price_) * 100.0) / 100.0;
+    fixed.l = std::round(std::min(fixed.l, price_) * 100.0) / 100.0;
+    bars_.push_back(fixed);
+    if (bars_.size() > static_cast<std::size_t>(cfg_.balance().stockBarsKeep))
+        bars_.erase(bars_.begin());
     if (shares_ > 0 && equity() <= 0.0) liquidate(ctx); // 爆仓
     ctx.updateBankruptcyFlag();
 }
@@ -90,7 +128,6 @@ void StockSystem::liquidate(GameContext& ctx) {
     principal_ = 0.0;
     loan_ = 0;
 }
-
 TradeResult StockSystem::buy(GameContext& ctx, int yuan) {
     const BalanceDef& b = cfg_.balance();
     if (yuan <= 0) return {false, "投入金额必须为正", 0};
@@ -173,25 +210,52 @@ long long StockSystem::chargeWeeklyInterest() {
 }
 
 Json StockSystem::toJson() const {
-    Json hist = Json::array();
-    for (double p : history_) hist.push_back(p);
+    Json bars = Json::array();
+    for (const auto& b : bars_)
+        bars.push_back(Json{{"o", b.o}, {"h", b.h}, {"l", b.l}, {"c", b.c}});
     return Json{
         {"price", price_},
-        {"history", hist},
+        {"bars", bars},
         {"shares", shares_},
         {"costBasis", costBasis_},
         {"principal", principal_},
         {"loan", loan_},
         {"leverageIndex", leverageIndex_},
+        {"rng", stockRng_.toJson()}, // 行情独立随机流状态随存档走
     };
 }
 
 void StockSystem::fromJson(const Json& j) {
     price_ = ju::getOr(j, "price", price_);
-    history_.clear();
-    if (j.contains("history") && j["history"].is_array())
-        for (const auto& p : j["history"]) history_.push_back(p.get<double>());
-    if (history_.empty()) history_.push_back(price_);
+    bars_.clear();
+    if (j.contains("bars") && j["bars"].is_array()) {
+        for (const auto& e : j["bars"]) {
+            StockBar b;
+            b.o = ju::getOr(e, "o", price_);
+            b.h = ju::getOr(e, "h", price_);
+            b.l = ju::getOr(e, "l", price_);
+            b.c = ju::getOr(e, "c", price_);
+            if (!bars_.empty()) b.o = bars_.back().c; // 开盘衔接前一根收盘
+            bars_.push_back(b);
+        }
+    } else if (j.contains("history") && j["history"].is_array()) {
+        // 旧版存档（纯收盘价序列）→ 合成为平底 K 线，兼容读档
+        for (const auto& p : j["history"]) {
+            StockBar b;
+            double c = p.get<double>();
+            b.o = bars_.empty() ? c : bars_.back().c;
+            b.h = std::max(b.o, c);
+            b.l = std::min(b.o, c);
+            b.c = c;
+            bars_.push_back(b);
+        }
+    }
+    if (bars_.empty()) {
+        StockBar b;
+        b.o = b.h = b.l = b.c = price_;
+        bars_.push_back(b);
+    }
+    price_ = bars_.back().c;
     shares_ = ju::getOr(j, "shares", shares_);
     costBasis_ = ju::getOr(j, "costBasis", costBasis_);
     principal_ = ju::getOr(j, "principal", principal_);
@@ -204,4 +268,5 @@ void StockSystem::fromJson(const Json& j) {
     if (loan_ < 0) loan_ = 0;
     if (costBasis_ < 0) costBasis_ = 0.0;
     if (principal_ < 0) principal_ = 0.0;
+    if (j.contains("rng")) stockRng_.fromJson(j["rng"]);
 }

@@ -1,13 +1,16 @@
 #include "ui/Screens.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <iostream>
+#include <limits>
 
 #include "actions/Commands.h"
 #include "core/ConfigManager.h"
 #include "core/Game.h"
 #include "core/GameContext.h"
+#include "core/IEffect.h"
 #include "core/Session.h"
 #include "economy/Market.h"
 #include "events/GameEvent.h"
@@ -31,25 +34,6 @@ std::string fmtPrice(double v) {
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%.2f", v);
     return buf;
-}
-
-// ASCII 迷你走势图（对应 bilibili fx-simple 的折线图）
-std::string sparkline(const std::vector<double>& v, std::size_t width) {
-    static const char* blocks[] = {" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"};
-    if (v.empty()) return "";
-    std::size_t start = v.size() > width ? v.size() - width : 0;
-    double lo = v[start], hi = v[start];
-    for (std::size_t i = start; i < v.size(); ++i) {
-        lo = std::min(lo, v[i]);
-        hi = std::max(hi, v[i]);
-    }
-    if (hi - lo < 1e-9) hi = lo + 1e-9;
-    std::string out;
-    for (std::size_t i = start; i < v.size(); ++i) {
-        int level = static_cast<int>((v[i] - lo) / (hi - lo) * 7.99);
-        out += blocks[level];
-    }
-    return out;
 }
 
 } // namespace
@@ -291,26 +275,149 @@ void InventoryScreen::handleInput(const std::string& in) {
     game_.screens().pop(); // 任意键返回
 }
 
-// ================= 炒股（bilibili 模拟器风） =================
+// ================= 炒股（bilibili fx-simple 风：K 线 + 鼠标按钮） =================
+
+namespace {
+constexpr int kChartRows = 12; // K 线图行数
+constexpr int kChartBars = 18; // 可见 K 线条数
+constexpr int kBtnRow1 = 24;   // 按钮行 1（draw 的输出行号）
+constexpr int kBtnRow2 = 25;   // 按钮行 2
+
+// 蜡烛图渲染：红涨绿跌（A股习惯），最右侧标注现价
+void drawCandles(const std::vector<StockBar>& bars, double lastPrice) {
+    if (bars.empty()) {
+        std::cout << "（暂无行情）\n";
+        return;
+    }
+    std::size_t start = bars.size() > static_cast<std::size_t>(kChartBars)
+                            ? bars.size() - static_cast<std::size_t>(kChartBars)
+                            : 0;
+    double lo = bars[start].l, hi = bars[start].h;
+    for (std::size_t i = start; i < bars.size(); ++i) {
+        lo = std::min(lo, bars[i].l);
+        hi = std::max(hi, bars[i].h);
+    }
+    if (hi - lo < 1e-9) hi = lo + 1.0;
+    double rowSpan = (hi - lo) / kChartRows;
+    for (int r = 0; r < kChartRows; ++r) {
+        double pTop = hi - (hi - lo) * r / kChartRows;
+        double pBot = hi - (hi - lo) * (r + 1) / kChartRows;
+        std::string rowStr;
+        for (std::size_t i = start; i < bars.size(); ++i) {
+            const StockBar& b = bars[i];
+            double bodyLo = std::min(b.o, b.c), bodyHi = std::max(b.o, b.c);
+            bool up = b.c >= b.o;
+            const char* col = up ? console::RED : console::GREEN;
+            bool bodyHit;
+            if (bodyHi - bodyLo >= rowSpan) bodyHit = bodyLo < pTop && bodyHi > pBot;
+            else bodyHit = (bodyLo + bodyHi) / 2 >= pBot && (bodyLo + bodyHi) / 2 < pTop;
+            bool wickHit = (b.l < pTop && b.h > pBot) && !bodyHit;
+            if (bodyHit) rowStr += console::paint("███", col);
+            else if (wickHit) rowStr += console::paint(" │ ", col);
+            else rowStr += "   ";
+            rowStr += " ";
+        }
+        if (lastPrice >= pBot && lastPrice <= pTop)
+            rowStr += console::paint("← 现价 ¥" + fmtPrice(lastPrice), console::YELLOW);
+        std::cout << rowStr << "\n";
+    }
+}
+
+int bestChoiceForMoney(const GameEvent& ev, const GameContext& ctx) {
+    (void)ctx;
+    int best = 0;
+    long long bv = std::numeric_limits<long long>::min();
+    for (std::size_t i = 0; i < ev.choices.size(); ++i) {
+        long long v = 0;
+        for (const auto& e : ev.choices[i].effects) v += e->estimateMoneyDelta();
+        if (v > bv) {
+            bv = v;
+            best = static_cast<int>(i);
+        }
+    }
+    return best;
+}
+
+std::string flatten(std::string s) {
+    std::size_t pos = 0;
+    while ((pos = s.find("\n", pos)) != std::string::npos) {
+        s.replace(pos, 1, "；");
+        pos += 3;
+    }
+    return s;
+}
+} // namespace
+
+// 进入炒股屏：真实控制台 → 接管输入循环（鼠标点击按钮 / 快捷键）；
+// 输入被重定向（脚本化回归）→ 回退到键盘行命令模式
+void StockScreen::onEnter() {
+    if (!console::stdinIsConsole()) {
+        lineFallback_ = true;
+        return;
+    }
+    console::InteractiveGuard guard; // 鼠标模式 + 隐藏光标，析构恢复
+    bool running = true;
+    render();
+    while (running) {
+        console::ConsoleEvent ev;
+        if (!console::pollEvent(100, ev)) continue;
+        GameContext* c = game_.ctx();
+        if (!c || game_.screens().top() != this) return; // 流程已接管（破产/结局）
+        bool changed = false;
+        if (ev.mouse && ev.clicked) {
+            for (auto& b : buttons_) {
+                if (ev.y == b.row && ev.x >= b.c0 && ev.x <= b.c1) {
+                    b.action();
+                    changed = true;
+                    break;
+                }
+            }
+            if (!changed) continue; // 点在空白处不重绘
+        } else if (ev.has) { // 键盘
+            if (ev.key == 'q' || ev.key == 27) running = false;
+            else if (ev.key >= '1' && ev.key <= '6') {
+                int idx = ev.key - '1';
+                if (idx < static_cast<int>(buttons_.size())) {
+                    buttons_[static_cast<std::size_t>(idx)].action();
+                    changed = true;
+                }
+            }
+        }
+        if (!c || game_.screens().top() != this) return;
+        if (changed) render();
+        if (c->flags->has("bankrupt")) return; // 爆仓 → 结局流程接管
+        if (!c->time->canAct() && !c->time->isSemesterOver()) {
+            game_.requestEndWeek(); // 学股市知识耗尽行动点 → 周日结算
+            running = false;
+        }
+    }
+    game_.screens().pop(); // 自弹栈（延迟销毁保证安全）
+}
 
 void StockScreen::draw() {
     GameContext* c = game_.ctx();
     if (!c) return;
     const StockSystem* s = c->stock.get();
-    header("浦江文旅（SHU）· 炒股模拟器 · 体力 " +
-           std::to_string(c->player->energy().get()) + "/" +
+    header("浦江文旅（SHU）· 炒股模拟器 · 股力 " +
+           std::to_string(c->player->stockSkill()) + "/" +
+           std::to_string(c->config.balance().stockSkillMax) +
+           " · 体力 " + std::to_string(c->player->energy().get()) + "/" +
            std::to_string(c->player->energy().max()));
-    // 现价与涨跌
-    const auto& hist = s->history();
-    double prev = hist.size() >= 2 ? hist[hist.size() - 2] : s->price();
+
+    // 现价与涨跌（对前一根 K 线收盘）
+    const auto& bars = s->bars();
+    double prev = bars.size() >= 2 ? bars[bars.size() - 2].c : s->price();
     double pct = prev > 1e-9 ? (s->price() - prev) / prev * 100.0 : 0.0;
     char pctBuf[32];
     std::snprintf(pctBuf, sizeof(pctBuf), "%+.2f%%", pct);
-    std::string colored = console::paint(std::string("现价 ¥") + fmtPrice(s->price()) + "  " + pctBuf,
-                                         pct >= 0 ? console::RED : console::GREEN);
-    line(colored + "（新手胜率 ≈ " +
-         std::to_string(static_cast<int>(std::round((1.0 - s->effectiveFailProb(*c)) * 100))) + "%——庄家最爱大一新生）");
-    line(console::paint(sparkline(hist, 44), console::YELLOW));
+    line(console::paint(std::string("现价 ¥") + fmtPrice(s->price()) + "  " + pctBuf,
+                        pct >= 0 ? console::RED : console::GREEN) +
+         " ｜ 持仓时收阴概率 " +
+         console::paint(std::to_string(static_cast<int>(std::round(s->effectiveFailProb(*c) * 100))) + "%",
+                        console::YELLOW) +
+         "（股力越高越倾向赚钱，但永不保证）");
+
+    drawCandles(bars, s->price());
     rule();
     if (!s->notice().empty()) line(console::paint(s->notice(), console::RED));
     line("持仓 " + std::to_string(s->shares()) + " 股（成本 ¥" + fmtPrice(s->avgCost()) + "/股）"
@@ -323,40 +430,100 @@ void StockScreen::draw() {
     line("现金 " + money(c->player->wallet().get()) +
          " ｜ 破产线：欠债 ≥ " + money(static_cast<double>(c->config.balance().bankruptcyDebt)));
     rule();
-    if (!feedback_.empty()) line(console::paint(feedback_, console::CYAN));
-    line("b <金额|all> 买入（耗体力 15）   s all 清仓（耗体力 15）   l 1|2|5 切杠杆   q 返回");
+    line(console::paint(feedback_.empty() ? "欢迎来到 K 线的世界。" : feedback_, console::CYAN));
+    rule();
+
+    // ---- 鼠标按钮（按行列命中） ----
+    buttons_.clear();
+    const auto& opts = s->leverageOptions();
+    int li = 0;
+    for (int i = 0; i < static_cast<int>(opts.size()); ++i)
+        if (opts[i] == s->leverage()) li = i;
+    int nextLev = opts[(li + 1) % opts.size()];
+    auto drawButtonRow = [&](int row, const std::vector<std::pair<std::string, std::function<void()>>>& defs) {
+        int col = 2;
+        for (const auto& [label, act] : defs) {
+            int w = static_cast<int>(strutil::displayWidth(label));
+            buttons_.push_back(Button{row, col, col + w - 1, act});
+            std::cout << console::paint(label, console::CYAN);
+            col += w + 3;
+        }
+        std::cout << "\n";
+    };
+    drawButtonRow(kBtnRow1, {
+        {"[1:买入100]", [this] { clickBuy(100); }},
+        {"[2:买入1000]", [this] { clickBuy(1000); }},
+        {"[3:买入All]", [this] { clickBuy(game_.ctx()->player->wallet().get()); }},
+        {"[4:清仓]", [this] { clickSellAll(); }},
+    });
+    drawButtonRow(kBtnRow2, {
+        {"[5:杠杆 x" + std::to_string(s->leverage()) + "→x" + std::to_string(nextLev) + "]",
+         [this] { clickCycleLeverage(); }},
+        {"[6:学股市知识 -" + std::to_string(c->config.balance().learnStockStaminaCost) + "体力]",
+         [this] { clickLearn(); }},
+        {"[q:返回]", [this] {}},
+    });
+    line(console::paint("鼠标点击按钮或按快捷键 1-6；ESC/q 返回（K 线随每次行动与周日结算刷新）",
+                        console::DIM));
+}
+
+void StockScreen::clickBuy(int yuan) {
+    GameContext* c = game_.ctx();
+    if (!c) return;
+    TradeResult r = c->stock->buy(*c, yuan);
+    feedback_ = r.msg;
+    game_.checkBankruptcy();
+}
+
+void StockScreen::clickSellAll() {
+    GameContext* c = game_.ctx();
+    if (!c) return;
+    TradeResult r = c->stock->sellAll(*c);
+    feedback_ = r.msg;
+    game_.checkBankruptcy();
+}
+
+void StockScreen::clickCycleLeverage() {
+    GameContext* c = game_.ctx();
+    if (!c) return;
+    const auto& opts = c->stock->leverageOptions();
+    int cur = c->stock->leverage();
+    int idx = 0;
+    for (int i = 0; i < static_cast<int>(opts.size()); ++i)
+        if (opts[i] == cur) idx = i;
+    TradeResult r = c->stock->setLeverage(opts[(idx + 1) % opts.size()]);
+    feedback_ = r.msg;
+}
+
+void StockScreen::clickLearn() {
+    GameContext* c = game_.ctx();
+    if (!c) return;
+    ActionOutcome out = Session::runAction(*c, LearnStockCommand());
+    c->lastFeedback = out.result.msg;
+    if (out.event) {
+        // 炒股屏内触发随机事件：按"对钱最有利"立即解决，结果并入反馈行
+        std::string msg = Session::applyChoice(*c, *out.event,
+                                               bestChoiceForMoney(*out.event, *c));
+        feedback_ = "【" + out.event->name + "】" + flatten(msg);
+    } else {
+        feedback_ = out.result.msg;
+    }
+    game_.checkBankruptcy();
+    if (out.result.consumedAp && c->time->actionsLeft() == 0 && !c->time->isSemesterOver())
+        game_.requestEndWeek(); // 行动点耗尽：排队周报，退出炒股屏后弹出
 }
 
 void StockScreen::handleInput(const std::string& in) {
+    // 键盘回退模式（输入被重定向时）；交互模式由 onEnter 内循环处理
     GameContext* c = game_.ctx();
     if (!c) return;
     std::string cmd = strutil::toLower(strutil::trim(in));
-    if (cmd == "q") {
+    if (cmd == "q" || cmd.empty()) {
         game_.screens().pop();
         return;
     }
     auto tokens = strutil::split(cmd);
     if (tokens.empty()) return;
-    StockSystem* s = c->stock.get();
-
-    if (tokens[0] == "l" && tokens.size() >= 2) {
-        int lev = -1;
-        try {
-            lev = std::stoi(tokens[1]);
-        } catch (...) {
-            feedback_ = "杠杆要是数字（1/2/5）";
-            return;
-        }
-        TradeResult r = s->setLeverage(lev);
-        feedback_ = r.msg;
-        return;
-    }
-    if (tokens[0] == "s") {
-        TradeResult r = s->sellAll(*c);
-        feedback_ = r.msg;
-        game_.checkBankruptcy(); // 清仓偿还融资后可能确认破产
-        return;
-    }
     if (tokens[0] == "b" && tokens.size() >= 2) {
         int yuan = 0;
         if (tokens[1] == "all") yuan = c->player->wallet().get();
@@ -368,13 +535,27 @@ void StockScreen::handleInput(const std::string& in) {
                 return;
             }
         }
-        TradeResult r = s->buy(*c, yuan);
-        feedback_ = r.msg;
-        game_.checkBankruptcy();
+        clickBuy(yuan);
         return;
     }
-    feedback_ = "输入格式：b <金额|all> / s all / l <1|2|5> / q";
+    if (tokens[0] == "s") {
+        clickSellAll();
+        return;
+    }
+    if (tokens[0] == "l") {
+        clickCycleLeverage();
+        return;
+    }
+    if (tokens[0] == "learn") {
+        clickLearn();
+        if (c->time->actionsLeft() == 0 && !c->time->isSemesterOver())
+            game_.screens().pop(); // 行动点耗尽：弹出排队周报
+        return;
+    }
+    feedback_ = "命令：b <金额|all> / s all / l 切杠杆 / learn 学股市知识 / q 返回";
 }
+
+// ================= 事件对话框 =================
 
 // ================= 事件对话框 =================
 

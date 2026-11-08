@@ -33,6 +33,14 @@ public:
     const EnergySystem& energy() const { return energy_; }
     EnergySystem& energy() { return energy_; }
 
+    // ---- 股力（炒股模拟器的成长数值） ----
+    int stockSkill() const { return stockSkill_; }
+    void addStockSkill(int delta) {
+        stockSkill_ += delta;
+        if (stockSkill_ < 0) stockSkill_ = 0;
+        if (stockSkill_ > stockSkillMax_) stockSkill_ = stockSkillMax_;
+    }
+
     // ---- 交易流水（Observer 订阅入口） ----
     void onTradeCompleted(const TradeCompletedEvent& e);
     const std::vector<std::string>& ledger() const { return ledger_; }
@@ -44,6 +52,8 @@ private:
     Wallet wallet_;             // 封装：外部只能走 add/spend（债务只经 charge）
     Inventory inventory_;       // 组合：背包是玩家的一部分
     EnergySystem energy_;       // 组合：体力（炒股消耗，休息恢复）
+    int stockSkill_;            // 股力：决定 K 线倾向的成长数值
+    int stockSkillMax_;
     int studyScore_;
     std::vector<std::string> ledger_; // 最近流水（存档保留，上限截断）
 };

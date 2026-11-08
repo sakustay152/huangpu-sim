@@ -45,3 +45,10 @@ public:
     std::string name() const override { return "休息"; }
     ActionResult execute(GameContext& ctx) const override;
 };
+
+// 学股市知识（耗大量体力，提升股力——炒股 K 线倾向的成长数值）
+class LearnStockCommand : public ICommand {
+public:
+    std::string name() const override { return "学股市知识"; }
+    ActionResult execute(GameContext& ctx) const override;
+};
