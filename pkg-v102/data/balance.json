@@ -1,0 +1,76 @@
+{
+  // 全局数值锚点（分工 3.4 / 3.5）—— 改数值只改这里，不用重编译逻辑
+  // 注：学期结构对齐真实上海大学 —— 16 个教学周 + 第 17/18 周考试周（共 18 周）；
+  //     targetMoney 仍为分工文档原始锚点 12000，经模拟器复校准后微调
+  "startMoney": 3000,
+  "weeklyExpense": 250,
+  "targetMoney": 12000,
+  "weeks": 18,
+  "teachingWeeks": 16,
+  "midtermWeek": 8,
+  "examStartWeek": 17,
+  "examStudyBonus": 3,
+  "apPerWeek": 6,
+  "maxSlots": 30,
+
+  "studyStart": 40,
+  "studyGain": 6,
+  "studyDecay": 4,
+  "passScore": 60,
+  "warnScore": 50,
+  "scholarshipScore": 85,
+  "scholarship": 1000,
+  "retakeFee": 2000,
+
+  "socialGain": 15,
+  "restAffinity": 3,
+
+  "eventChance": 0.22,
+  "rumorAccuracy": 0.8,
+  "trendAmp": 0.25,
+  "noiseAmp": 0.06,
+  "seasonAmp": 0.35,
+
+  "kaoyanDiscount": 0.9,
+  "innerTicketBonus": 1.25,
+  "seniorWorkBonus": 1.2,
+
+  // 炒股模拟器（灵感：bilibili 炒外汇模拟器；大一学生失败率调高）
+  "stockStartPrice": 10,
+  "stockVolMin": 0.01,
+  "stockVolMax": 0.06,
+  "stockFailProb": 0.62,
+  "stockCrashProb": 0.03,
+  "stockCrashDrop": 0.25,
+  "stockBoomProb": 0.02,
+  "stockBoomRise": 0.30,
+  "stockFeeRate": 0.005,
+  "stockLoanWeeklyRate": 0.05,
+  "stockLeverages": [1, 2, 5],
+
+  // 股力：学股市知识（耗大量体力）提升，让 K 线更偏向赚钱方向（但永不保证）
+  "stockSkillStart": 5,
+  "stockSkillMax": 100,
+  "stockSkillFactor": 0.003,
+  "stockSkillFailFloor": 0.25,
+  "learnStockStaminaCost": 30,
+  "learnStockGainMin": 6,
+  "learnStockGainMax": 10,
+  "stockBarsKeep": 60,
+  "stockIntraSteps": 6,
+
+  "staminaMax": 100,
+  "staminaStockCost": 15,
+  "staminaRestGain": 40,
+  "staminaWeeklyRecover": 30,
+  "staminaLowThreshold": 30,
+  "staminaLowFailBonus": 0.15,
+
+  "bankruptcyDebt": 3000,
+
+  "jobs": {
+    "canteen": [120, 160],
+    "store": [140, 180],
+    "westgate": [100, 140]
+  }
+}

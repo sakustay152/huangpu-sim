@@ -14,4 +14,8 @@ saves/
 tools/mingit/
 tools/mingit.zip
 tools/.gh_token
+tools/.tok_header
 tools/device_code.json
+tools/rel_resp.json
+tools/asset_resp.json
+huangpu-sim-v*-win64.zip

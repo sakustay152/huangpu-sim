@@ -21,7 +21,8 @@ function New-Release($tag, $name, $body) {
     } catch {
         $msg = $_.ErrorDetails.Message
         if ($msg -and $msg -match 'already_exists') { Write-Host ('RELEASE-EXISTS: ' + $tag) }
-        else { Write-Host ('RELEASE-FAIL: ' + $tag + ' :: ' + $msg); exit 1 }
+        elseif ($msg) { Write-Host ('RELEASE-FAIL: ' + $tag + ' :: ' + $msg) }
+        else { Write-Host ('RELEASE-SKIP(network): ' + $tag) } # 网络抖动：跳过继续，不影响其它 Release
     }
 }
 
@@ -53,6 +54,23 @@ New-Release 'v1.01-stock' 'v1.01 · 含炒股模拟器 + 破产结局' @'
 - 规则测试 33 → 51 项（杠杆仓位/爆仓/破产 flag/存档往返等）
 
 获取：本页下载 Source code (zip)，或直接克隆 main 分支
+'@
+
+New-Release 'v1.02' 'v1.02 · 炒股完整版（K 线 + 鼠标 + 股力）' @'
+对应 main 分支：v1.01 的严格超集。
+
+在 v1.01 基础上新增
+- K 线图：OHLC 蜡烛图（红涨绿跌），每根 K 线内部多子步波动，
+  随每次行动 / 周日结算刷新，右侧实时标注现价
+- 鼠标操作：控制台启用鼠标输入，点击按钮完成买入/清仓/切杠杆/学股市知识
+  （快捷键 1-6 兜底；输入重定向时自动回退键盘命令行）
+- 股力系统：在炒股屏点"学股市知识"消耗 30 体力 + 1 行动点提升股力；
+  股力越高 K 线越偏向赚钱方向（持仓收阴概率 62% → 最低 25%），
+  但无论股力高低都可能赚/亏（概率倾斜，不是确定性）
+- 行情独立随机流：炒股不扰动主随机流，1000 局 Bot 校准结果不受影响
+- 规则测试 51 → 60 项（K 线 OHLC 形态/股力成长曲线/学股市知识/存档往返）
+
+资产：huangpu-sim-v1.02-win64.zip（静态链接 CRT，解压双击 huangpu_sim.exe 即玩，无需运行库）
 '@
 
 Write-Host 'ALL-DONE'

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "bankrupt", "title": "破产清算", "priority": 0,
+    "text": "催收电话打到宿舍座机的那天，你把最后一件家当——那台二手笔记本——挂上了二手群。十八岁的征信报告盖了章：破产清算。庄家用 K 线给你上了一堂比任何课都贵的课。黄浦江还是那条江，只是这一程你搭错了船。休学、打工、把债还完，然后……重新开局。",
+    "conditions": [
+      { "type": "hasFlag", "flag": "bankrupt" }
+    ]
+  },
+  {
+    "id": "partner", "title": "校园合伙人", "priority": 1,
+    "text": "你和苏晴的文创小生意做成了：菊文化节的摊位前排队的人绕了半个广场。毕业照那天，你们把第一笔'公司分红'拍在桌上——下学期的学费，不用家里出一分。江风吹过操场，有人向东去追日出，你们向西赶日落，赶在所有人前面。",
+    "conditions": [
+      { "type": "totalAssetsMin", "value": 13500 },
+      { "type": "affinityMin", "npc": "xuejie", "value": 80 },
+      { "type": "hasFlag", "flag": "club_member" }
+    ]
+  },
+  {
+    "id": "steady", "title": "站稳脚跟", "priority": 2,
+    "text": "学期最后一夜，你在账本上写下最后一笔。总资产越过那条线的时候，窗外正好是黄浦江上的灯。不惊天动地，但你在这个城市站稳了脚跟——还有一些人，愿意在下学期继续和你拼桌吃饭。",
+    "conditions": [
+      { "type": "totalAssetsMin", "value": 12000 },
+      { "type": "hasFlag", "flag": "not:failed" },
+      { "type": "affinityAnyMin", "value": 60 }
+    ]
+  },
+  {
+    "id": "beyond", "title": "账单之外", "priority": 99,
+    "text": "账本合上的那一刻，数字停在离目标差一点的地方。但这一学期你学会了比倒卖更贵的东西：什么时候该去图书馆，什么时候该陪朋友吃一碗面。钱没攒够，日子还在——下学期，重新开局。",
+    "conditions": [
+      { "type": "always" }
+    ]
+  }
+]

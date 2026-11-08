@@ -1,0 +1,14 @@
+[
+  {
+    "id": "roommate", "name": "室友阿灿", "home": "dorm",
+    "intro": "消息灵通，宿舍二手群群主，讲义气但记仇"
+  },
+  {
+    "id": "senior", "name": "学长陈默", "home": "library",
+    "intro": "常驻图书馆的考研人，认识各种打工渠道"
+  },
+  {
+    "id": "xuejie", "name": "学姐苏晴", "home": "club",
+    "intro": "学生会文艺部部长，手里有演出票源"
+  }
+]
