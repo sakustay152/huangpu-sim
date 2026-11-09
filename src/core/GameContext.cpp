@@ -31,7 +31,11 @@ GameContext::GameContext(const ConfigManager& config, Random& rng, EventBus& bus
     wireSubscriptions();
 }
 
-GameContext::~GameContext() = default;
+GameContext::~GameContext() {
+    // 摘掉本上下文注册的订阅：Player 随上下文析构，留着订阅就是悬垂指针
+    for (const std::uint64_t id : subscriptionIds_) bus.unsubscribe(id);
+    subscriptionIds_.clear();
+}
 
 // 破产判定：钱包被炒股债务扣到破产线以下
 bool GameContext::isBankrupt() const {
@@ -45,9 +49,10 @@ void GameContext::updateBankruptcyFlag() {
 // Observer 接线：交易完成 → 玩家自动记账（订阅方只依赖事件，不依赖发布方）
 void GameContext::wireSubscriptions() {
     Player* p = player.get();
-    bus.subscribe<TradeCompletedEvent>([p](const TradeCompletedEvent& e) {
-        p->onTradeCompleted(e);
-    });
+    subscriptionIds_.push_back(
+        bus.subscribe<TradeCompletedEvent>([p](const TradeCompletedEvent& e) {
+            p->onTradeCompleted(e);
+        }));
 }
 
 void GameContext::initNewGame() {

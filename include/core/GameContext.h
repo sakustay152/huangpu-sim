@@ -6,6 +6,7 @@
 // 不反向依赖 UI；只做组合与转发，不写业务。
 // 依赖注入：config/rng/bus 以引用注入，不用全局单例。
 // ============================================================
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -65,4 +66,5 @@ public:
 
 private:
     void wireSubscriptions(); // EventBus 订阅（Observer 模式的接线处）
+    std::vector<std::uint64_t> subscriptionIds_; // 析构时逐个退订，避免悬垂捕获
 };

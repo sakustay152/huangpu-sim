@@ -101,6 +101,19 @@ int main(int argc, char** argv) {
             if (r1.range(1, 1000) != r2.range(1, 1000)) same = false;
         check(same, "同种子序列完全一致（bug 可复现）");
 
+        // ---------- 3b. EventBus：退订 ----------
+        std::cout << "\n== EventBus 退订 ==\n";
+        {
+            EventBus eb;
+            int hits = 0;
+            auto id = eb.subscribe<int>([&hits](const int&) { ++hits; });
+            eb.publish(1);
+            check(hits == 1, "订阅后收到事件");
+            eb.unsubscribe(id);
+            eb.publish(2);
+            check(hits == 1, "退订后不再收到事件");
+        }
+
         // ---------- 4. Market：价格边界 ----------
         std::cout << "\n== Market ==\n";
         Random rng(1);
@@ -291,10 +304,8 @@ int main(int argc, char** argv) {
         // ---------- 12. C 模块：交易错误码（W2） ----------
         std::cout << "\n== C 模块：交易错误码 ==\n";
         {
-            // 独立总线：t 之前创建的 GameContext 已析构，但它们挂在共享 bus 上的
-            // TradeCompletedEvent 订阅仍会捕获已释放的 Player（use-after-free）。
-            EventBus tbus;
-            GameContext t(cfg, rng, tbus);
+            // 共享 bus：验证 GameContext 析构时会退订，不会留下悬垂 Player
+            GameContext t(cfg, rng, bus);
             t.initNewGame();
             t.locationId = "store";
 
