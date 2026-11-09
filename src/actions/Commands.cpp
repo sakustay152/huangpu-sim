@@ -4,6 +4,7 @@
 #include "core/GameContext.h"
 #include "core/Random.h"
 #include "events/Effect.h"
+#include "player/JobSystem.h"
 #include "player/Player.h"
 #include "story/NpcSystem.h"
 #include "time/TimeSystem.h"
@@ -20,22 +21,8 @@ ActionResult MoveCommand::execute(GameContext& ctx) const {
 }
 
 ActionResult WorkCommand::execute(GameContext& ctx) const {
-    const auto& jobs = ctx.config.balance().jobs;
-    auto it = jobs.find(ctx.locationId);
-    int lo = 80, hi = 100;
-    std::string jobName = "打零工";
-    if (it != jobs.end()) {
-        lo = it->second.first;
-        hi = it->second.second;
-        if (ctx.locationId == "canteen") jobName = "食堂窗口帮工";
-        else if (ctx.locationId == "store") jobName = "教育超市理货";
-        else if (ctx.locationId == "westgate") jobName = "街头发传单";
-    }
-    int pay = ctx.rng.range(lo, hi);
-    // 学长线回报：好感 ≥30，日薪 +20%（分工 3.5）
-    if (ctx.npcs->atLeast("senior", 30)) pay = static_cast<int>(pay * ctx.config.balance().seniorWorkBonus);
-    ctx.player->wallet().add(pay);
-    return {true, true, jobName + "干了一天，工资 +¥" + std::to_string(pay)};
+    JobResult r = JobSystem(ctx.config).work(ctx);
+    return {r.ok, true, r.msg};
 }
 
 ActionResult StudyCommand::execute(GameContext& ctx) const {

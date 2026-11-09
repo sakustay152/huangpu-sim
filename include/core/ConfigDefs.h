@@ -42,6 +42,13 @@ struct BalanceDef {
     double seasonAmp = 0.35;      // 需求期涨幅
 
     std::map<std::string, std::pair<int, int>> jobs; // 地点→打工日薪区间
+    // ---- 打工岗位与体力（C，W3） ----
+    std::map<std::string, std::string> jobNames;   // 地点→岗位名（"default" 兜底）
+    std::map<std::string, int>         jobStamina; // 地点→每次打工耗体力
+    double lowEnergyPayRate = 0.5;                 // 低体力时工资系数
+    // ---- 学业：熬夜（C，W4 用） ----
+    int studyNightBonus = 3;                       // 熬夜比普通多 +3
+    int studyNightStamina = 15;                    // 熬夜耗体力
     double kaoyanDiscount = 0.9;  // 学长线：考研资料进货折扣
     double innerTicketBonus = 1.25; // 学姐线：演出门票卖出加成
     double seniorWorkBonus = 1.2; // 学长线：打工日薪加成

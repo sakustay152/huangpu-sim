@@ -24,6 +24,7 @@
 #include "events/EndingJudge.h"
 #include "events/GameEvent.h"
 #include "player/Inventory.h"
+#include "player/JobSystem.h"
 #include "player/Player.h"
 #include "player/TradeError.h"
 #include "player/TradeSystem.h"
@@ -338,6 +339,62 @@ int main(int argc, char** argv) {
             check(!over.ok && over.code == TradeError::NotOwned, "卖出超量 → NotOwned");
             check(t.player->inventory().find("coffee_ticket")->qty == 5,
                   "失败后仍持有 5 件");
+        }
+
+        // ---------- 13. C 模块：打工与体力（W3） ----------
+        std::cout << "\n== C 模块：打工与体力 ==\n";
+        {
+            const BalanceDef& b = cfg.balance();
+            GameContext j(cfg, rng, bus);
+            j.initNewGame();
+
+            j.locationId = "canteen";
+            auto w1 = JobSystem(cfg).work(j);
+            check(w1.ok && w1.pay >= 120 && w1.pay <= 160, "食堂工资 120–160");
+            check(j.player->energy().get() == b.staminaMax - b.jobStamina.at("canteen"),
+                  "食堂扣体力 20");
+
+            j.locationId = "store";
+            auto w2 = JobSystem(cfg).work(j);
+            check(w2.pay >= 140 && w2.pay <= 180, "超市工资 140–180");
+            check(j.player->energy().get() ==
+                      b.staminaMax - b.jobStamina.at("canteen") - b.jobStamina.at("store"),
+                  "超市扣体力 15");
+
+            j.locationId = "westgate";
+            auto w3 = JobSystem(cfg).work(j);
+            check(w3.pay >= 100 && w3.pay <= 140, "西门工资 100–140");
+
+            // 学长线：好感 30 → 日薪 ×1.2（食堂 120~160 → 144~192）
+            j.npcs->addAffinity("senior", 30);
+            j.locationId = "canteen";
+            auto w4 = JobSystem(cfg).work(j);
+            check(w4.pay >= 144 && w4.pay <= 192, "学长好感 30 → 日薪 ×1.2");
+
+            // 低体力边界：30 不减半、29 减半
+            // EnergySystem 没有 setter，用两个独立上下文分别造 30 / 29
+            GameContext e30(cfg, rng, bus);
+            e30.initNewGame();
+            e30.locationId = "canteen";
+            e30.player->energy().spend(b.staminaMax - 30);    // 正好 30
+            auto w30 = JobSystem(cfg).work(e30);
+            check(!w30.lowEnergy && w30.pay >= 120 && w30.pay <= 160, "体力 30 不减半");
+
+            GameContext e29(cfg, rng, bus);
+            e29.initNewGame();
+            e29.locationId = "canteen";
+            e29.player->energy().spend(b.staminaMax - 29);    // 29
+            auto w29 = JobSystem(cfg).work(e29);
+            check(w29.lowEnergy && w29.pay >= 60 && w29.pay <= 80, "体力 29 收益减半");
+
+            // 体力不足也照常打工，扣到 0 不为负
+            GameContext z(cfg, rng, bus);
+            z.initNewGame();
+            z.locationId = "canteen";
+            z.player->energy().spend(b.staminaMax - 5);
+            auto wz = JobSystem(cfg).work(z);
+            check(wz.ok && z.player->energy().get() == 0, "体力 5 打工扣到 0，不为负");
+            check(wz.staminaCost == 5, "体力不足时只扣剩余体力");
         }
 
     } catch (const std::exception& e) {

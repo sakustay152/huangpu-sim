@@ -72,5 +72,15 @@
     "canteen": [120, 160],
     "store": [140, 180],
     "westgate": [100, 140]
-  }
+  },
+
+  // 打工岗位与体力（C，W3）；想一键回滚体力对打工的影响，把 jobStamina 全改 0
+  "jobNames": {
+    "canteen": "食堂窗口帮工", "store": "教育超市理货",
+    "westgate": "街头发传单", "default": "打零工"
+  },
+  "jobStamina": { "canteen": 20, "store": 15, "westgate": 25, "default": 20 },
+  "lowEnergyPayRate": 0.5,
+  "studyNightBonus": 3,
+  "studyNightStamina": 15
 }

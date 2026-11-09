@@ -27,6 +27,12 @@ ConfigManager::ConfigManager(const std::string& dataDir) : dataDir_(dataDir) {
         if (!location(n.home)) fail("NPC " + n.id + " 的驻地不存在: " + n.home);
     for (const auto& [loc, range] : balance_.jobs)
         if (!location(loc)) fail("balance.json jobs 引用了不存在的地点 " + loc);
+    for (const auto& kv : balance_.jobNames)
+        if (kv.first != "default" && !location(kv.first))
+            fail("balance.json jobNames 引用了不存在的地点 " + kv.first);
+    for (const auto& kv : balance_.jobStamina)
+        if (kv.first != "default" && !location(kv.first))
+            fail("balance.json jobStamina 引用了不存在的地点 " + kv.first);
     if (balance_.weeks <= 0 || balance_.apPerWeek <= 0) fail("周数/行动点必须为正");
 }
 
@@ -112,6 +118,16 @@ void ConfigManager::loadBalance() {
                 balance_.jobs[it.key()] = {it.value()[0].get<int>(), it.value()[1].get<int>()};
         }
     }
+    if (j.contains("jobNames") && j["jobNames"].is_object())
+        for (auto it = j["jobNames"].begin(); it != j["jobNames"].end(); ++it)
+            balance_.jobNames[it.key()] = it.value().get<std::string>();
+    if (j.contains("jobStamina") && j["jobStamina"].is_object())
+        for (auto it = j["jobStamina"].begin(); it != j["jobStamina"].end(); ++it)
+            balance_.jobStamina[it.key()] = it.value().get<int>();
+
+    balance_.lowEnergyPayRate  = ju::getOr(j, "lowEnergyPayRate", 0.5);
+    balance_.studyNightBonus   = ju::getOr(j, "studyNightBonus", 3);
+    balance_.studyNightStamina = ju::getOr(j, "studyNightStamina", 15);
 }
 
 void ConfigManager::loadGoods() {
