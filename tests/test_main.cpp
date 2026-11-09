@@ -23,6 +23,7 @@
 #include "economy/Market.h"
 #include "events/EndingJudge.h"
 #include "events/GameEvent.h"
+#include "player/GoalTracker.h"
 #include "player/Inventory.h"
 #include "player/JobSystem.h"
 #include "player/Player.h"
@@ -509,6 +510,49 @@ int main(int argc, char** argv) {
             check(w.flags->has("failed"), "期末挂科设置 failed flag");
             check(cashBefore - w.player->wallet().get() >= b.retakeFee,
                   "扣补考费 2000");
+        }
+
+        // ---------- 17. C 模块：目标快照（W5） ----------
+        std::cout << "\n== C 模块：目标快照 ==\n";
+        {
+            GameContext g(cfg, rng, bus);
+            g.initNewGame();
+            GoalTracker gt;
+            GoalSnapshot s = gt.snapshot(g);
+
+            check(s.totalAssets == s.cash + s.inventoryValue, "总资产 = 现金 + 库存估值");
+            check(s.totalAssets ==
+                      g.player->wallet().get() + g.trade->estimatePortfolioValue(g),
+                  "与结局判定口径一致");
+
+            const int before = s.totalAssets;
+            g.player->wallet().add(100);
+            check(gt.snapshot(g).totalAssets == before + 100, "加钱后快照同步");
+
+            check(s.weeks == cfg.balance().weeks && s.apPerWeek == cfg.balance().apPerWeek,
+                  "周数/行动点来自配置");
+        }
+
+        // ---------- 18. C 模块：事件效果联调（W5） ----------
+        std::cout << "\n== C 模块：事件效果联调 ==\n";
+        {
+            // D 的 StudyEffect / MoneyEffect / ItemEffect 都走公开方法，这里只验证接口
+            GameContext e(cfg, rng, bus);
+            e.initNewGame();
+
+            const int beforeScore = e.player->studyScore();
+            e.player->addStudy(2);
+            check(e.player->studyScore() == std::min(100, beforeScore + 2),
+                  "事件加分走 addStudy，封顶 100");
+
+            const int beforeCash = e.player->wallet().get();
+            e.player->wallet().add(80);
+            check(e.player->wallet().get() == beforeCash + 80, "事件加钱走 wallet().add");
+
+            e.player->inventory().add("umbrella", 1, 0.0, 1);
+            const Inventory::Item* item = e.player->inventory().find("umbrella");
+            check(item && item->qty == 1 && item->slotsPer == 1,
+                  "事件给物品走 inventory().add");
         }
 
     } catch (const std::exception& e) {
