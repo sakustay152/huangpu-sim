@@ -9,9 +9,9 @@
 Player::Player(const ConfigManager& cfg)
     : inventory_(cfg.balance().maxSlots),
       energy_(cfg),
+      study_(cfg),
       stockSkill_(cfg.balance().stockSkillStart),
-      stockSkillMax_(cfg.balance().stockSkillMax),
-      studyScore_(cfg.balance().studyStart) {}
+      stockSkillMax_(cfg.balance().stockSkillMax) {}
 
 void Player::onTradeCompleted(const TradeCompletedEvent& e) {
     const GoodsDef* g = nullptr; // 文本由调用方补充商品名太绕，这里只记 id/qty/金额
@@ -27,7 +27,8 @@ Json Player::toJson() const {
     return Json{
         {"wallet", wallet_.toJson()},
         {"inventory", inventory_.toJson()},
-        {"studyScore", studyScore_},
+        {"studyScore", study_.score()},   // 旧版本仍能读
+        {"study", study_.toJson()},       // 新字段：failed
         {"stamina", energy_.toJson()},
         {"stockSkill", stockSkill_},
         {"ledger", ledger_},
@@ -37,7 +38,8 @@ Json Player::toJson() const {
 void Player::fromJson(const Json& j) {
     if (j.contains("wallet")) wallet_.fromJson(j["wallet"]);
     if (j.contains("inventory")) inventory_.fromJson(j["inventory"]);
-    studyScore_ = ju::getOr(j, "studyScore", studyScore_);
+    if (j.contains("study")) study_.fromJson(j["study"]);
+    else study_.setScore(ju::getOr(j, "studyScore", study_.score()));  // 旧档
     stockSkill_ = ju::getOr(j, "stockSkill", stockSkill_);
     if (stockSkill_ < 0) stockSkill_ = 0;
     if (stockSkill_ > stockSkillMax_) stockSkill_ = stockSkillMax_;

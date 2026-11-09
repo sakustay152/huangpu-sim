@@ -11,6 +11,7 @@
 #include "core/ISaveable.h"
 #include "player/Energy.h"
 #include "player/Inventory.h"
+#include "player/StudySystem.h"
 #include "player/Wallet.h"
 
 class ConfigManager;
@@ -26,8 +27,10 @@ public:
     Inventory& inventory() { return inventory_; }
 
     // ---- 学业 ----
-    int studyScore() const { return studyScore_; }
-    void addStudy(int delta) { studyScore_ += delta; if (studyScore_ < 0) studyScore_ = 0; if (studyScore_ > 100) studyScore_ = 100; }
+    int studyScore() const { return study_.score(); }
+    void addStudy(int delta) { study_.setScore(study_.score() + delta); }  // 兼容 D 的 StudyEffect
+    StudySystem& study() { return study_; }
+    const StudySystem& study() const { return study_; }
 
     // ---- 体力 ----
     const EnergySystem& energy() const { return energy_; }
@@ -52,8 +55,8 @@ private:
     Wallet wallet_;             // 封装：外部只能走 add/spend（债务只经 charge）
     Inventory inventory_;       // 组合：背包是玩家的一部分
     EnergySystem energy_;       // 组合：体力（炒股消耗，休息恢复）
+    StudySystem study_;         // 组合：学业（平时分/期中期末/挂科）
     int stockSkill_;            // 股力：决定 K 线倾向的成长数值
     int stockSkillMax_;
-    int studyScore_;
     std::vector<std::string> ledger_; // 最近流水（存档保留，上限截断）
 };

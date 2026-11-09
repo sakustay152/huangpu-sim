@@ -6,6 +6,7 @@
 #include "events/Effect.h"
 #include "player/JobSystem.h"
 #include "player/Player.h"
+#include "player/StudySystem.h"
 #include "story/NpcSystem.h"
 #include "time/TimeSystem.h"
 
@@ -27,13 +28,12 @@ ActionResult WorkCommand::execute(GameContext& ctx) const {
 
 ActionResult StudyCommand::execute(GameContext& ctx) const {
     if (ctx.locationId != "library") return {false, false, "学习要去图书馆"};
-    int gain = ctx.config.balance().studyGain;
-    bool examSeason = ctx.time->week() >= ctx.config.balance().examStartWeek;
-    if (examSeason) gain += ctx.config.balance().examStudyBonus; // 考试周冲刺加成
-    ctx.player->addStudy(gain);
+
+    std::string msg;
+    const int gain = ctx.player->study().study(mode_, ctx.player->energy(),
+                                               ctx.time->week(), msg);
     ctx.time->markStudied();
-    std::string flavor = examSeason ? "考试周冲刺！" : "泡了一天图书馆";
-    return {true, true, flavor + "，平时分 +" + std::to_string(gain) +
+    return {true, true, msg + "，平时分 +" + std::to_string(gain) +
                             "（当前 " + std::to_string(ctx.player->studyScore()) + "）"};
 }
 

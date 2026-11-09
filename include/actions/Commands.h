@@ -7,6 +7,7 @@
 #include <string>
 
 #include "core/ICommand.h"
+#include "player/StudySystem.h"   // 需要 StudyMode
 
 // 移动到某地点（耗 1 点 + 路费）
 class MoveCommand : public ICommand {
@@ -25,11 +26,16 @@ public:
     ActionResult execute(GameContext& ctx) const override;
 };
 
-// 图书馆学习（+平时分）
+// 图书馆学习（+平时分）；熬夜模式多加分但耗体力，体力不足自动退化
 class StudyCommand : public ICommand {
 public:
-    std::string name() const override { return "学习"; }
+    explicit StudyCommand(StudyMode mode = StudyMode::Normal) : mode_(mode) {}
+    std::string name() const override {
+        return mode_ == StudyMode::AllNighter ? "熬夜学习" : "学习";
+    }
     ActionResult execute(GameContext& ctx) const override;
+private:
+    StudyMode mode_;
 };
 
 // 与驻地 NPC 社交（+好感）

@@ -26,6 +26,7 @@
 #include "player/Inventory.h"
 #include "player/JobSystem.h"
 #include "player/Player.h"
+#include "player/StudySystem.h"
 #include "player/TradeError.h"
 #include "player/TradeSystem.h"
 #include "simulate/SimulationRunner.h"
@@ -290,7 +291,10 @@ int main(int argc, char** argv) {
         // ---------- 12. C 模块：交易错误码（W2） ----------
         std::cout << "\n== C 模块：交易错误码 ==\n";
         {
-            GameContext t(cfg, rng, bus);
+            // 独立总线：t 之前创建的 GameContext 已析构，但它们挂在共享 bus 上的
+            // TradeCompletedEvent 订阅仍会捕获已释放的 Player（use-after-free）。
+            EventBus tbus;
+            GameContext t(cfg, rng, tbus);
             t.initNewGame();
             t.locationId = "store";
 
@@ -395,6 +399,105 @@ int main(int argc, char** argv) {
             auto wz = JobSystem(cfg).work(z);
             check(wz.ok && z.player->energy().get() == 0, "体力 5 打工扣到 0，不为负");
             check(wz.staminaCost == 5, "体力不足时只扣剩余体力");
+        }
+
+        // ---------- 14. C 模块：学业（W4） ----------
+        std::cout << "\n== C 模块：学业 ==\n";
+        {
+            const BalanceDef& b = cfg.balance();
+
+            StudySystem st(cfg);
+            check(st.score() == b.studyStart, "初始平时分 40");
+
+            EnergySystem en(cfg);
+            std::string msg;
+            for (int i = 0; i < 10; ++i) st.study(StudyMode::Normal, en, 1, msg);
+            check(st.score() == 100, "学习 10 次封顶 100");
+
+            StudySystem st2(cfg);
+            st2.setScore(10);
+            auto d = st2.onWeekEnd(5, false);
+            check(d.decay == b.studyDecay && st2.score() == 10 - b.studyDecay,
+                  "一周不学 -4");
+
+            StudySystem st3(cfg);
+            st3.setScore(45);
+            check(st3.onWeekEnd(b.midtermWeek, true).midtermWarn, "期中 <50 警告");
+
+            StudySystem st4(cfg);
+            st4.setScore(b.passScore - 5);
+            auto f = st4.onWeekEnd(b.weeks, true);
+            check(f.failedNow && f.retakeFee == b.retakeFee && st4.failed(),
+                  "期末 <60 挂科 + 补考费");
+
+            StudySystem st5(cfg);
+            st5.setScore(b.scholarshipScore);
+            auto s5 = st5.onWeekEnd(b.weeks, true);
+            check(!s5.failedNow && s5.scholarship == b.scholarship, "期末 ≥85 奖学金");
+
+            StudySystem st6(cfg);
+            EnergySystem en6(cfg);
+            const int g = st6.study(StudyMode::AllNighter, en6, 1, msg);
+            check(g == b.studyGain + b.studyNightBonus, "熬夜 +9");
+            check(en6.get() == b.staminaMax - b.studyNightStamina, "熬夜 -15 体力");
+
+            StudySystem st7(cfg);
+            EnergySystem en7(cfg);
+            const int g7 = st7.study(StudyMode::Normal, en7, b.examStartWeek, msg);
+            check(g7 == b.studyGain + b.examStudyBonus, "考试周普通学习 +9");
+
+            // 体力不足：熬夜退化为普通，且不扣体力
+            GameContext q(cfg, rng, bus);
+            q.initNewGame();
+            q.player->energy().spend(b.staminaMax - 5);
+            const int g8 = q.player->study().study(StudyMode::AllNighter,
+                                                   q.player->energy(), 1, msg);
+            check(g8 == b.studyGain && q.player->energy().get() == 5,
+                  "体力 5 熬夜 → 退化普通，不扣体力");
+        }
+
+        // ---------- 15. C 模块：存档兼容（W4） ----------
+        std::cout << "\n== C 模块：存档兼容 ==\n";
+        {
+            Json old = Json{
+                {"wallet", {{"money", 1234}}},
+                {"inventory", {{"capacity", 30}, {"items", Json::array()}}},
+                {"studyScore", 77},
+            };
+            Player oldP(cfg);
+            oldP.fromJson(old);
+            check(oldP.studyScore() == 77, "旧档只有 studyScore 也能读");
+            check(!oldP.study().failed(), "旧档默认未挂科");
+
+            Json nj = oldP.toJson();
+            check(nj.contains("study") && nj.contains("studyScore"), "新档同时写两个键");
+
+            Player newP(cfg);
+            newP.fromJson(nj);
+            check(newP.studyScore() == 77, "新档往返分数一致");
+        }
+
+        // ---------- 16. C 模块：周结算挂科扣费（W4） ----------
+        std::cout << "\n== C 模块：周结算挂科 ==\n";
+        {
+            const BalanceDef& b = cfg.balance();
+            GameContext w(cfg, rng, bus);
+            w.initNewGame();
+            w.player->wallet().add(5000);
+
+            for (int i = 1; i < b.weeks; ++i) {
+                WeekSettlement s(w);
+                s.run();
+            }
+            check(w.time->week() == b.weeks, "快进到第 18 周");
+
+            w.player->study().setScore(b.passScore - 5);
+            const int cashBefore = w.player->wallet().get();
+            WeekSettlement last(w);
+            last.run();
+            check(w.flags->has("failed"), "期末挂科设置 failed flag");
+            check(cashBefore - w.player->wallet().get() >= b.retakeFee,
+                  "扣补考费 2000");
         }
 
     } catch (const std::exception& e) {

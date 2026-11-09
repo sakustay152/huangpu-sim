@@ -9,6 +9,7 @@
 #include "economy/Market.h"
 #include "events/EventScheduler.h"
 #include "player/Player.h"
+#include "player/StudySystem.h"
 #include "story/StoryFlags.h"
 #include "stock/StockSystem.h"
 #include "time/TimeSystem.h"
@@ -41,11 +42,32 @@ void WeekSettlement::chargeExpenses() {
 }
 
 void WeekSettlement::settleStudy() {
-    if (ctx_.time->week() > 1 && !ctx_.time->studiedThisWeek()) {
-        ctx_.player->addStudy(-ctx_.config.balance().studyDecay);
-        rep_.lines.push_back("这周一次都没学习，平时分 -" +
-                             std::to_string(ctx_.config.balance().studyDecay) +
+    StudyWeekOutcome o = ctx_.player->study().onWeekEnd(
+        ctx_.time->week(), ctx_.time->studiedThisWeek());
+
+    if (o.decay > 0)
+        rep_.lines.push_back("这周一次都没学习，平时分 -" + std::to_string(o.decay) +
                              "（当前 " + std::to_string(ctx_.player->studyScore()) + "）");
+
+    if (o.midtermWarn)
+        rep_.lines.push_back("【期中警告】平时分 " +
+                             std::to_string(ctx_.player->studyScore()) +
+                             " 低于警戒线 " +
+                             std::to_string(ctx_.config.balance().warnScore) +
+                             "，期末再不冲刺要挂科了！");
+
+    if (o.failedNow) {
+        ctx_.flags->set("failed");
+        const int fee = std::min(o.retakeFee, ctx_.player->wallet().get());
+        if (fee > 0) ctx_.player->wallet().spend(fee);
+        rep_.lines.push_back("【期末】平时分 " +
+                             std::to_string(ctx_.player->studyScore()) +
+                             "，挂科了……补考费 -¥" + std::to_string(fee));
+    } else if (o.scholarship > 0) {
+        ctx_.player->wallet().add(o.scholarship);
+        rep_.lines.push_back("【奖学金】平时分 ≥" +
+                             std::to_string(ctx_.config.balance().scholarshipScore) +
+                             "，获得奖学金 +¥" + std::to_string(o.scholarship));
     }
 }
 
@@ -68,30 +90,7 @@ void WeekSettlement::settleEnergy() {
 }
 
 void WeekSettlement::checkMilestones() {
-    const BalanceDef& b = ctx_.config.balance();
-    int week = ctx_.time->week();
-    int score = ctx_.player->studyScore();
-
-    if (week == b.midtermWeek && score < b.warnScore) {
-        rep_.lines.push_back("【期中警告】平时分 " + std::to_string(score) + " 低于警戒线 " +
-                             std::to_string(b.warnScore) + "，期末再不冲刺要挂科了！");
-    }
-    if (week == b.weeks) { // 期末周（第 18 周）结算
-        if (score < b.passScore) {
-            ctx_.flags->set("failed");
-            int fee = std::min(b.retakeFee, ctx_.player->wallet().get());
-            if (fee > 0) ctx_.player->wallet().spend(fee);
-            rep_.lines.push_back("【期末】平时分 " + std::to_string(score) + "，挂科了……补考费 -¥" +
-                                 std::to_string(fee));
-        } else {
-            rep_.lines.push_back("【期末】平时分 " + std::to_string(score) + "，稳过！");
-            if (score >= b.scholarshipScore) {
-                ctx_.player->wallet().add(b.scholarship);
-                rep_.lines.push_back("【奖学金】平时分 ≥" + std::to_string(b.scholarshipScore) +
-                                     "，获得奖学金 +¥" + std::to_string(b.scholarship));
-            }
-        }
-    }
+    // 期中警告/期末判定/奖学金/补考费已并入 settleStudy（C，W4）
 }
 
 void WeekSettlement::beginNewWeek() {
