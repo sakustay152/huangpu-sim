@@ -25,6 +25,7 @@
 #include "events/GameEvent.h"
 #include "player/Inventory.h"
 #include "player/Player.h"
+#include "player/TradeError.h"
 #include "player/TradeSystem.h"
 #include "simulate/SimulationRunner.h"
 #include "stock/StockSystem.h"
@@ -283,6 +284,60 @@ int main(int argc, char** argv) {
             double expected = std::max(cfg.balance().stockFailProb - kctx.player->stockSkill() * cfg.balance().stockSkillFactor,
                                        cfg.balance().stockSkillFailFloor);
             check(std::abs(pMax - expected) < 1e-9, "收阴概率 = 基准 - 股力修正（下限封顶）");
+        }
+
+        // ---------- 12. C 模块：交易错误码（W2） ----------
+        std::cout << "\n== C 模块：交易错误码 ==\n";
+        {
+            GameContext t(cfg, rng, bus);
+            t.initNewGame();
+            t.locationId = "store";
+
+            const int cash0 = t.player->wallet().get();
+
+            // 容量：咖啡券 1 格/件，背包 30 格 → 最多 30
+            auto r1 = t.trade->buy(t, "coffee_ticket", 100);
+            check(!r1.ok && r1.code == TradeError::NotEnoughSlot,
+                  "买 100 件超容量 → NotEnoughSlot");
+            check(r1.maxQty == 30, "超容量时 maxQty=30");
+            check(t.player->wallet().get() == cash0, "失败后现金不变");
+            check(t.player->inventory().empty(), "失败后背包不变");
+
+            // 限购：充电宝 15/天，容量 30 不构成瓶颈
+            auto r2 = t.trade->buy(t, "powerbank", 16);
+            check(!r2.ok && r2.code == TradeError::QuotaExceeded,
+                  "超限购 → QuotaExceeded");
+            check(r2.maxQty == 15, "超限购时 maxQty=15");
+
+            // 现金：只剩 50 元，咖啡券单价约 10 元
+            t.player->wallet().spend(t.player->wallet().get() - 50);
+            auto r3 = t.trade->buy(t, "coffee_ticket", 10);
+            check(!r3.ok && r3.code == TradeError::NotEnoughCash,
+                  "现金不足 → NotEnoughCash");
+            check(r3.maxQty > 0 && r3.maxQty <= 5, "现金不足时 maxQty=可买件数");
+
+            // 数量非法
+            auto r4 = t.trade->buy(t, "coffee_ticket", 0);
+            check(!r4.ok && r4.code == TradeError::InvalidCount, "数量 0 → InvalidCount");
+
+            // 地点不卖
+            t.locationId = "library";
+            auto r5 = t.trade->buy(t, "coffee_ticket", 1);
+            check(!r5.ok && r5.code == TradeError::WrongLocation,
+                  "图书馆买咖啡券 → WrongLocation");
+
+            // 成功路径：金额 = 单价 × 数量
+            t.locationId = "store";
+            t.player->wallet().add(500);
+            auto ok = t.trade->buy(t, "coffee_ticket", 5);
+            check(ok.ok && ok.code == TradeError::None, "正常买入成功");
+            check(ok.amount == ok.unitPrice * 5, "amount = unitPrice × qty");
+
+            // 卖出超量
+            auto over = t.trade->sell(t, "coffee_ticket", 8);
+            check(!over.ok && over.code == TradeError::NotOwned, "卖出超量 → NotOwned");
+            check(t.player->inventory().find("coffee_ticket")->qty == 5,
+                  "失败后仍持有 5 件");
         }
 
     } catch (const std::exception& e) {
