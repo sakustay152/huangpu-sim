@@ -512,6 +512,28 @@ int main(int argc, char** argv) {
                   "扣补考费 2000");
         }
 
+        // ---------- 16b. C 模块：期末通过文案（W4） ----------
+        std::cout << "\n== C 模块：期末通过文案 ==\n";
+        {
+            const BalanceDef& b = cfg.balance();
+            GameContext ok(cfg, rng, bus);
+            ok.initNewGame();
+            ok.player->wallet().add(6000);
+            for (int i = 1; i < b.weeks; ++i) {
+                WeekSettlement s(ok);
+                s.run();
+            }
+            ok.player->study().setScore(90);
+            WeekSettlement last(ok);
+            auto rep = last.run();
+            bool hasPass = false, hasScholarship = false;
+            for (const auto& line : rep.lines) {
+                if (line.find("稳过") != std::string::npos) hasPass = true;
+                if (line.find("奖学金") != std::string::npos) hasScholarship = true;
+            }
+            check(hasPass && hasScholarship, "期末通过 + 奖学金文案");
+        }
+
         // ---------- 17. C 模块：目标快照（W5） ----------
         std::cout << "\n== C 模块：目标快照 ==\n";
         {

@@ -63,11 +63,15 @@ void WeekSettlement::settleStudy() {
         rep_.lines.push_back("【期末】平时分 " +
                              std::to_string(ctx_.player->studyScore()) +
                              "，挂科了……补考费 -¥" + std::to_string(fee));
-    } else if (o.scholarship > 0) {
-        ctx_.player->wallet().add(o.scholarship);
-        rep_.lines.push_back("【奖学金】平时分 ≥" +
-                             std::to_string(ctx_.config.balance().scholarshipScore) +
-                             "，获得奖学金 +¥" + std::to_string(o.scholarship));
+    } else if (ctx_.time->week() == ctx_.config.balance().weeks) {
+        rep_.lines.push_back("【期末】平时分 " +
+                             std::to_string(ctx_.player->studyScore()) + "，稳过！");
+        if (o.scholarship > 0) {
+            ctx_.player->wallet().add(o.scholarship);
+            rep_.lines.push_back("【奖学金】平时分 ≥" +
+                                 std::to_string(ctx_.config.balance().scholarshipScore) +
+                                 "，获得奖学金 +¥" + std::to_string(o.scholarship));
+        }
     }
 }
 
