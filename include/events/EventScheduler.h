@@ -34,7 +34,7 @@ public:
     // 事件被选择后登记冷却（随机事件）
     void markTriggered(const GameEvent& ev);
 
-    // 延迟效果队列（ScheduledEffect 调用）
+    // 延迟效果队列（ScheduledEffect 调用；due 与"正在结算的周"比较）
     void scheduleEffect(int dueWeek, Json effectJson);
     void applyDueEffects(GameContext& ctx);
 

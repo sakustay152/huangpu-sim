@@ -11,8 +11,8 @@ class GameContext;
 
 struct ActionResult {
     bool ok = false;
-    bool consumedAp = false; // 是否消耗 1 个行动点
-    std::string msg;         // 给玩家看的反馈
+    bool consumedTime = false; // 是否消耗了时间（小时数，各命令按配置扣除）
+    std::string msg;           // 给玩家看的反馈
 };
 
 class ICommand {

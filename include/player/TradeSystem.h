@@ -37,5 +37,8 @@ private:
     TradeResult fail(TradeError c, const std::string& m,
                      int maxQty = 0, int unitPrice = 0) const;
 
+    // v2 时间系统：成交一趟市场要花时间（买/卖各 tradeHours 小时）
+    void passMarketHour(GameContext& ctx) const;
+
     const ConfigManager& cfg_;
 };

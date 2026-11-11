@@ -13,6 +13,7 @@
 #include "stock/StockSystem.h"
 #include "time/TimeSystem.h"
 #include "util/JsonUtil.h"
+#include "core/ITimeListener.h"
 
 GameContext::GameContext(const ConfigManager& config, Random& rng, EventBus& bus)
     : config(config), rng(rng), bus(bus) {
@@ -44,6 +45,25 @@ bool GameContext::isBankrupt() const {
 
 void GameContext::updateBankruptcyFlag() {
     if (isBankrupt()) flags->set("bankrupt");
+}
+
+// 昏迷/宵禁统一入口：任何行动（含屏幕上的免费交易）把时间推过凌晨 2 点都会走到这里
+bool GameContext::handleFaintAndAdvance(std::string& appendMsg) {
+    if (time->hour() < TimeSystem::kCurfewHour) return false;
+
+    const BalanceDef& b = config.balance();
+    const int fee = std::min(player->wallet().get(), b.faintHospitalFee);
+    if (fee > 0) player->wallet().spend(fee);
+    player->energy().reduceMax(b.faintMaxStaminaLoss);
+    const bool weekAdvanced = time->advanceDay();
+    locationId = "dorm"; // 被室友抬回宿舍
+    ITimeListener& marketListener = *market;
+    marketListener.onDayTick(); // 新的一天：限购/噪声刷新
+    appendMsg += "\n【昏迷】凌晨 2 点，你眼前一黑倒在原地……醒来时已躺在校医院"
+                 "（诊疗费 -¥" + std::to_string(fee) +
+                 "，体力上限 -" + std::to_string(b.faintMaxStaminaLoss) + "）";
+    updateBankruptcyFlag();
+    return weekAdvanced;
 }
 
 // Observer 接线：交易完成 → 玩家自动记账（订阅方只依赖事件，不依赖发布方）

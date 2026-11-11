@@ -20,20 +20,33 @@ struct BalanceDef {
     int midtermWeek = 8;          // 期中预警周
     int examStartWeek = 17;       // 考试周起始（第 17-18 周）
     int examStudyBonus = 3;       // 考试周图书馆冲刺加成
-    int apPerWeek = 6;            // 每周行动点
     int maxSlots = 30;            // 背包格数
 
+    // ---- v2 时间系统：24 小时制，行动按"小时 + 体力"计费 ----
+    int moveStamina = 5;          // 移动耗体力
+    int moveHours = 1;            // 移动耗小时
+    int studyStamina = 10;        // 学习耗体力
+    int studyHours = 2;           // 学习耗小时
+    int socialStamina = 5;        // 社交耗体力
+    int socialHours = 2;          // 社交耗小时
+    int workHours = 8;            // 一次打工班次（8 小时）
+    int tradeHours = 1;           // 商品买卖一趟市场耗小时
+    int learnStockHours = 2;      // 学股市知识耗小时
+    int sleepFullHours = 8;       // 睡满该小时数 → 体力强制回满
+    double insomniaChance = 0.10; // 睡觉失眠概率（等效睡眠时间 -2 小时）
+    int insomniaPenaltyHours = 2;
+    int faintHospitalFee = 50;    // 昏迷送校医院的诊疗费
+    int faintMaxStaminaLoss = 10; // 昏迷扣除的体力上限（周结算恢复）
+
     int studyStart = 40;          // 平时分初始
-    int studyGain = 6;            // 每次学习 +
+    int studyGain = 3;            // 每次学习 +（v2：2 小时一节自习）
     int studyDecay = 4;           // 一周没学习 -
     int passScore = 60;           // 及格线
     int warnScore = 50;           // 期中警告线
     int scholarshipScore = 85;    // 奖学金平时分线
     int scholarship = 1000;       // 奖学金金额
     int retakeFee = 2000;         // 补考费
-
-    int socialGain = 15;          // 每次社交好感 +
-    int restAffinity = 3;         // 休息卧谈好感 +
+    // （v2：社交好感改由选项池给出 +5/0/-5；休息由"睡觉"机制取代）
 
     double eventChance = 0.22;    // 每次行动后随机事件概率
     double rumorAccuracy = 0.8;   // 情报准确率
@@ -75,11 +88,9 @@ struct BalanceDef {
     int learnStockGainMax = 10;        // 每次学到的股力上限
     int stockBarsKeep = 60;            // 保留的 K 线条数
     int stockIntraSteps = 6;           // 每根 K 线内部的子步数
-    // ---- 体力（现阶段只有炒股消耗） ----
+    // ---- 体力（所有行动共用；昏迷扣上限，周结算恢复） ----
     int staminaMax = 100;
     int staminaStockCost = 15;         // 每次买卖耗体力
-    int staminaRestGain = 40;          // 休息恢复
-    int staminaWeeklyRecover = 30;     // 周结算恢复
     int staminaLowThreshold = 30;      // 低体力阈值
     double staminaLowFailBonus = 0.15; // 低体力时额外下跌概率
     // ---- 破产 ----
@@ -109,6 +120,13 @@ struct LocationDef {
 // ---- npcs.json：NPC 定义 ----
 struct NpcDef {
     std::string id, name, home, intro;
+};
+
+// ---- social.json：社交选项池（v2 社交三选一） ----
+struct SocialPoolDef {
+    std::vector<std::string> positive; // 好感 +5 的选项池
+    std::vector<std::string> neutral;  // 好感不变的选项池
+    std::vector<std::string> negative; // 好感 -5 的选项池
 };
 
 // ---- endings.json：结局定义 ----

@@ -32,6 +32,9 @@ public:
     // events.json 原文（EventScheduler 启动时用 EventFactory 解析）
     const Json& rawEvents() const { return rawEvents_; }
 
+    // social.json：NPC 社交选项池（v2 社交三选一）
+    const SocialPoolDef* socialPool(const std::string& npcId) const;
+
     const std::string& dataDir() const { return dataDir_; }
 
 private:
@@ -44,6 +47,7 @@ private:
     std::vector<NpcDef> npcs_;
     std::vector<EndingDef> endings_;
     Json rawEvents_;
+    std::map<std::string, SocialPoolDef> socialPools_; // npcId → 选项池
 
     void loadBalance();
     void loadGoods();
@@ -51,6 +55,7 @@ private:
     void loadNpcs();
     void loadEndings();
     void loadEvents();
+    void loadSocialPools();
 
     [[noreturn]] void fail(const std::string& what) const;
 };

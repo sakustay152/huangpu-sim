@@ -1,11 +1,15 @@
 #pragma once
 // ============================================================
-// [time/TimeSystem] 时间与行动点（组员 C 主责；A 集成最小版）
-// 分工 3.2：12 周 × 每周 6 行动点（周一~周六），行动点耗尽自动周日结算。
-// 一个行动点 = 一天。周日自动结算由调用方（Game/Sim）驱动。
+// [time/TimeSystem] 24 小时制时间系统（组长 A 重构 v2）
+// - 每天 8:00 起床，行动消耗小时数（小时数由各命令按 balance 配置扣除）
+// - hour = 26 表示次日凌晨 2 点：熬过这个点会昏迷（调用方在行动后检查）
+// - advanceDay() 推进到次日 8:00；跨周日（周日→周一）返回 true，
+//   由 Session/Game 触发周结算
+// - studiedThisWeek / lastWeekStudied 供周结算的学业判定
 // ============================================================
 #include "core/ISaveable.h"
 #include "util/Json.h"
+#include <string>
 
 class ConfigManager;
 
@@ -13,37 +17,38 @@ class TimeSystem : public ISaveable {
 public:
     explicit TimeSystem(const ConfigManager& cfg);
 
-    int week() const { return week_; }
-    int actionsLeft() const { return actionsLeft_; }
-    int apPerWeek() const { return apPerWeek_; }
+    static constexpr int kCurfewHour = 26; // 次日凌晨 2 点（8 点记为 0，+18 小时）
+    static constexpr int kWakeHour = 8;    // 每天起床时间
 
-    // 今天周几（0=周一 … 5=周六，本学期第 dayIndex+1 个行动日）
-    int dayIndex() const { return apPerWeek_ - actionsLeft_; }
+    int week() const { return week_; }            // 1..weeks（周日结算期间短暂 = weeks+1）
+    int settledWeek() const { return week_ - 1; } // 正在结算哪一周（周翻转后调用）
+    int day() const { return day_; }              // 0=周一 … 6=周日
+    int hour() const { return hour_; }            // 8..26
     const char* dayName() const;
+    std::string clockText() const;                // "14:00" / "次日 01:00"
 
-    bool canAct() const { return actionsLeft_ > 0; }
+    bool canAct() const { return hour_ < kCurfewHour && !isSemesterOver(); }
     bool isSemesterOver() const { return week_ > weeks_; }
 
-    // 消耗 1 行动点（调用前先 canAct()）
-    void spendAction() { if (actionsLeft_ > 0) --actionsLeft_; }
+    // 消耗小时数（可能越过 26 → 调用方随后检查昏迷）
+    void spendHours(int h) { if (h > 0) hour_ += h; }
 
-    // 周日结算后进入新的一周
-    void startNextWeek() { ++week_; actionsLeft_ = apPerWeek_; studiedThisWeek_ = false; }
+    // 推进到次日 8:00；跨周日（周日→周一）返回 true → 触发周结算
+    bool advanceDay();
 
-    // 本周是否学习过（周结算扣平时分用）
+    // 本周是否学习过（周结算学业判定用）
     void markStudied() { studiedThisWeek_ = true; }
     bool studiedThisWeek() const { return studiedThisWeek_; }
-
-    // 提前结束本周（模拟器/特殊事件兜底）
-    void forceEndWeek() { actionsLeft_ = 0; }
+    bool lastWeekStudied() const { return lastWeekStudied_; }
 
     Json toJson() const override;
     void fromJson(const Json& j) override;
 
 private:
     int weeks_;
-    int apPerWeek_;
     int week_ = 1;
-    int actionsLeft_ = 6;
+    int day_ = 0;      // 0=周一 … 6=周日
+    int hour_ = kWakeHour;
     bool studiedThisWeek_ = false;
+    bool lastWeekStudied_ = false;
 };

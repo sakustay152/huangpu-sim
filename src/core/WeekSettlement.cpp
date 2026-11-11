@@ -17,7 +17,7 @@
 
 WeekSettlement::Report WeekSettlement::run() {
     rep_ = Report{};
-    rep_.week = ctx_.time->week();
+    rep_.week = ctx_.time->settledWeek(); // 周翻转后结算：结算的是刚结束的那一周
     rep_.moneyBefore = ctx_.player->wallet().get();
 
     chargeExpenses();
@@ -43,7 +43,7 @@ void WeekSettlement::chargeExpenses() {
 
 void WeekSettlement::settleStudy() {
     StudyWeekOutcome o = ctx_.player->study().onWeekEnd(
-        ctx_.time->week(), ctx_.time->studiedThisWeek());
+        ctx_.time->settledWeek(), ctx_.time->lastWeekStudied());
 
     if (o.decay > 0)
         rep_.lines.push_back("这周一次都没学习，平时分 -" + std::to_string(o.decay) +
@@ -63,7 +63,7 @@ void WeekSettlement::settleStudy() {
         rep_.lines.push_back("【期末】平时分 " +
                              std::to_string(ctx_.player->studyScore()) +
                              "，挂科了……补考费 -¥" + std::to_string(fee));
-    } else if (ctx_.time->week() == ctx_.config.balance().weeks) {
+    } else if (ctx_.time->settledWeek() == ctx_.config.balance().weeks) {
         rep_.lines.push_back("【期末】平时分 " +
                              std::to_string(ctx_.player->studyScore()) + "，稳过！");
         if (o.scholarship > 0) {
@@ -90,7 +90,8 @@ void WeekSettlement::settleStocks() {
 }
 
 void WeekSettlement::settleEnergy() {
-    ctx_.player->energy().add(ctx_.config.balance().staminaWeeklyRecover);
+    // 昏迷造成的体力上限扣减在周结算时恢复；睡眠回体力由睡觉机制负责
+    ctx_.player->energy().restoreMax(ctx_.config.balance().staminaMax);
 }
 
 void WeekSettlement::checkMilestones() {
@@ -98,7 +99,7 @@ void WeekSettlement::checkMilestones() {
 }
 
 void WeekSettlement::beginNewWeek() {
-    ctx_.time->startNextWeek();
+    // 周数已在 TimeSystem::advanceDay 中翻转；这里只做冷却递减与广播
     ctx_.events->onWeekStart(); // 事件冷却递减
     ctx_.bus.publish(WeekStartedEvent{ctx_.time->week()});
 }

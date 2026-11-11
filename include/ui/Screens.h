@@ -62,6 +62,27 @@ protected:
     void handleInput(const std::string& in) override;
 };
 
+// 社交三选一：从驻地 NPC 的选项池抽出 +5/0/-5 三个话题（不显示分值）
+class SocialScreen : public ConsoleScreen {
+public:
+    using ConsoleScreen::ConsoleScreen;
+    const char* id() const override { return "social"; }
+    void onEnter() override;
+protected:
+    void draw() override;
+    void handleInput(const std::string& in) override;
+
+private:
+    struct SocialOption {
+        std::string text;
+        int delta = 0;
+    };
+    std::vector<SocialOption> options_; // 每次进入时抽取
+    std::string npcId_;
+    std::string npcName_;
+    std::string feedback_;
+};
+
 // 炒股屏：bilibili fx-simple 风格 —— K 线图 + 鼠标点击按钮交易/杠杆/学股市知识
 // 真实控制台下接管输入循环（ENABLE_MOUSE_INPUT），行输入重定向时回退键盘命令
 class StockScreen : public ConsoleScreen {

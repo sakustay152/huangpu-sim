@@ -40,16 +40,20 @@ SimGameResult SimulationRunner::runOne(const std::string& strategyName, std::uin
     int guard = 0;
     int stall = 0;
     int minMoney = ctx.player->wallet().get();
-    while (!ctx.time->isSemesterOver() && guard++ < 20000) {
+    int lastWeek = ctx.time->week();
+    while (!ctx.time->isSemesterOver() && guard++ < 5000) {
         bool consumed = bot->takeTurn(ctx);
         stall = consumed ? 0 : stall + 1;
-        if (stall > 8) { // 兜底：策略卡住则强制进入周日结算
-            ctx.time->forceEndWeek();
+        if (stall > 8) { // 兜底：策略卡住则强制睡到第二天（昏睡兜底，不计失眠）
+            ctx.time->advanceDay();
+            ctx.player->energy().restoreFull();
+            ctx.locationId = "dorm";
             stall = 0;
         }
         minMoney = std::min(minMoney, ctx.player->wallet().get());
         if (ctx.flags->has("bankrupt")) break; // 炒股爆仓破产（Bot 不炒股，防御性检查）
-        if (!ctx.time->canAct()) {
+        if (ctx.time->week() != lastWeek) {    // 周翻转 → 周结算 + 新周固定节点
+            lastWeek = ctx.time->week();
             WeekSettlement settle(ctx);
             settle.run();
             if (!ctx.time->isSemesterOver()) {

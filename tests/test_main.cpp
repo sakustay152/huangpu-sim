@@ -147,18 +147,39 @@ int main(int argc, char** argv) {
         check(rs.ok && ctx.player->wallet().get() < before, "卖出回款但低于成本（价差存在）");
         check(ctx.player->inventory().find("coffee_ticket") == nullptr, "卖光后背包清空");
 
-        // ---------- 6. 行动点与结算 ----------
+        // ---------- 6. 时间系统与结算（v2：24 小时制） ----------
         std::cout << "\n== TimeSystem / WeekSettlement ==\n";
-        check(ctx.time->actionsLeft() == cfg.balance().apPerWeek, "周初行动点满额");
+        check(ctx.time->canAct() && ctx.time->week() == 1 && ctx.time->day() == 0,
+              "第 1 周周一可行动");
+        ctx.locationId = "dorm";
+        auto sl = Session::runAction(ctx, SleepCommand());
+        check(sl.result.ok && ctx.time->hour() == 8 && ctx.time->day() == 1,
+              "睡觉推进到周二 8:00");
+        check(ctx.player->energy().get() == ctx.player->energy().max(),
+              "睡满 8 小时体力回满");
+        check(!sl.weekAdvanced, "周一睡觉不触发周结算");
+
+        // 打工 8 小时班 ×2 → 16:00 → 24:00
         ctx.locationId = "canteen";
-        while (ctx.time->canAct()) {
-            Session::runAction(ctx, WorkCommand());
-        }
-        check(ctx.time->actionsLeft() == 0, "行动点耗尽");
+        Session::runAction(ctx, WorkCommand());
+        Session::runAction(ctx, WorkCommand());
+        check(ctx.time->hour() == 24, "两次 8 小时班后到 24:00");
+        Session::runAction(ctx, WorkCommand()); // 24 → 32 越过凌晨 2 点 → 昏迷
+        check(ctx.time->day() == 2 && ctx.time->hour() == 8, "熬过凌晨 2 点昏迷，次日 8:00 醒来");
+        check(ctx.locationId == "dorm", "昏迷后被送回宿舍");
+        check(ctx.player->energy().max() == cfg.balance().staminaMax - cfg.balance().faintMaxStaminaLoss,
+              "昏迷扣除体力上限");
+
+        // 周结算：快进到周日结束
         int walletBefore = ctx.player->wallet().get();
+        bool rolled = false;
+        while (!rolled) {
+            rolled = ctx.time->advanceDay();
+            ctx.player->energy().restoreFull();
+        }
         WeekSettlement settle(ctx);
         auto rep = settle.run();
-        check(ctx.time->week() == 2, "结算后进入第 2 周");
+        check(ctx.time->settledWeek() == 1, "结算的是第 1 周");
         check(ctx.player->wallet().get() <= walletBefore - cfg.balance().weeklyExpense + 1,
               "周支出已扣除");
 
@@ -180,12 +201,13 @@ int main(int argc, char** argv) {
         GameContext e1(cfg, rng, bus);
         e1.initNewGame();
         check(std::string(EndingJudge::judge(e1)->id) == "beyond", "初始状态 → 账单之外（兜底）");
-        e1.player->wallet().add(20000);
-        e1.npcs->addAffinity("roommate", 70);
-        check(std::string(EndingJudge::judge(e1)->id) == "steady", "达标+挚友 → 站稳脚跟");
-        e1.npcs->addAffinity("xuejie", 85);
-        e1.flags->set("club_member");
-        check(std::string(EndingJudge::judge(e1)->id) == "partner", "社团线+学姐 85 → 校园合伙人");
+            e1.player->wallet().add(60000);
+            e1.npcs->addAffinity("roommate", 70);
+            check(std::string(EndingJudge::judge(e1)->id) == "steady", "达标+挚友 → 站稳脚跟");
+            e1.npcs->addAffinity("xuejie", 85);
+            e1.flags->set("club_member");
+            e1.player->wallet().add(60000);
+            check(std::string(EndingJudge::judge(e1)->id) == "partner", "社团线+学姐 85 → 校园合伙人");
 
         // ---------- 9. 模拟器不变量（抽样 30 局） ----------
         std::cout << "\n== Simulation 不变量 ==\n";
@@ -214,11 +236,11 @@ int main(int argc, char** argv) {
             check(en.spend(cfg.balance().staminaStockCost), "正常消耗体力");
             check(en.get() == cfg.balance().staminaMax - cfg.balance().staminaStockCost,
                   "体力扣减正确");
-            en.add(cfg.balance().staminaRestGain);
+            en.add(40); // 睡觉/休息类恢复（数值任意）
             check(en.get() == std::min(cfg.balance().staminaMax,
                                        cfg.balance().staminaMax - cfg.balance().staminaStockCost +
-                                           cfg.balance().staminaRestGain),
-                  "休息恢复体力（不超上限）");
+                                           40),
+                  "体力恢复（不超上限）");
 
             // Wallet：唯一允许负债的入口
             sctx.player->wallet().charge(cfg.balance().startMoney + 10);
@@ -284,7 +306,7 @@ int main(int argc, char** argv) {
             int staminaBefore = ken.get();
             int skill0 = kctx.player->stockSkill();
             auto out = Session::runAction(kctx, LearnStockCommand());
-            check(out.result.ok && out.result.consumedAp, "学股市知识消耗 1 行动点");
+            check(out.result.ok && out.result.consumedTime, "学股市知识消耗 2 小时");
             check(ken.get() == staminaBefore - cfg.balance().learnStockStaminaCost,
                   "学股市知识消耗大量体力");
             check(kctx.player->stockSkill() >= skill0 + cfg.balance().learnStockGainMin &&
@@ -312,19 +334,24 @@ int main(int argc, char** argv) {
 
             const int cash0 = t.player->wallet().get();
 
-            // 容量：咖啡券 1 格/件，背包 30 格 → 最多 30
+            // 容量 vs 限购：取两者的较小值作为期望 maxQty（数值全部来自配置）
+            const int coffeeQuota = cfg.goods("coffee_ticket")->limitPerDay;
+            const int coffeeFit = cfg.balance().maxSlots / cfg.goods("coffee_ticket")->slots;
+            const int coffeeCap = std::min(coffeeQuota, coffeeFit);
             auto r1 = t.trade->buy(t, "coffee_ticket", 100);
-            check(!r1.ok && r1.code == TradeError::NotEnoughSlot,
-                  "买 100 件超容量 → NotEnoughSlot");
-            check(r1.maxQty == 30, "超容量时 maxQty=30");
+            check(!r1.ok && (r1.code == TradeError::NotEnoughSlot ||
+                             r1.code == TradeError::QuotaExceeded),
+                  "买 100 件超容量/限购 → 被拒绝");
+            check(r1.maxQty == coffeeCap, "失败时 maxQty = 可买上限（来自配置）");
             check(t.player->wallet().get() == cash0, "失败后现金不变");
             check(t.player->inventory().empty(), "失败后背包不变");
 
-            // 限购：充电宝 15/天，容量 30 不构成瓶颈
-            auto r2 = t.trade->buy(t, "powerbank", 16);
+            // 限购：充电宝按当日限购拒绝
+            const int pbQuota = cfg.goods("powerbank")->limitPerDay;
+            auto r2 = t.trade->buy(t, "powerbank", pbQuota + 1);
             check(!r2.ok && r2.code == TradeError::QuotaExceeded,
                   "超限购 → QuotaExceeded");
-            check(r2.maxQty == 15, "超限购时 maxQty=15");
+            check(r2.maxQty == pbQuota, "超限购时 maxQty = 当日限购");
 
             // 现金：只剩 50 元，咖啡券单价约 10 元
             t.player->wallet().spend(t.player->wallet().get() - 50);
@@ -423,8 +450,8 @@ int main(int argc, char** argv) {
 
             EnergySystem en(cfg);
             std::string msg;
-            for (int i = 0; i < 10; ++i) st.study(StudyMode::Normal, en, 1, msg);
-            check(st.score() == 100, "学习 10 次封顶 100");
+            for (int i = 0; i < 20; ++i) st.study(StudyMode::Normal, en, 1, msg); // +3/次
+            check(st.score() == 100, "学习 20 次封顶 100");
 
             StudySystem st2(cfg);
             st2.setScore(10);
@@ -497,16 +524,24 @@ int main(int argc, char** argv) {
             w.initNewGame();
             w.player->wallet().add(5000);
 
-            for (int i = 1; i < b.weeks; ++i) {
-                WeekSettlement s(w);
-                s.run();
+            // 快进：逐日推进，周翻转时结算第 1..17 周
+            while (w.time->week() < b.weeks) {
+                if (w.time->advanceDay()) {
+                    WeekSettlement s(w);
+                    s.run();
+                }
             }
-            check(w.time->week() == b.weeks, "快进到第 18 周");
+            check(w.time->settledWeek() == b.weeks - 1, "快进到第 18 周初");
 
+            // 过完第 18 周：结算期末
             w.player->study().setScore(b.passScore - 5);
             const int cashBefore = w.player->wallet().get();
-            WeekSettlement last(w);
-            last.run();
+            while (w.time->week() == b.weeks) {
+                if (w.time->advanceDay()) {
+                    WeekSettlement last(w);
+                    last.run();
+                }
+            }
             check(w.flags->has("failed"), "期末挂科设置 failed flag");
             check(cashBefore - w.player->wallet().get() >= b.retakeFee,
                   "扣补考费 2000");
@@ -519,13 +554,22 @@ int main(int argc, char** argv) {
             GameContext ok(cfg, rng, bus);
             ok.initNewGame();
             ok.player->wallet().add(6000);
-            for (int i = 1; i < b.weeks; ++i) {
-                WeekSettlement s(ok);
-                s.run();
+            // 快进：逐日推进，周翻转时结算第 1..17 周
+            while (ok.time->week() < b.weeks) {
+                if (ok.time->advanceDay()) {
+                    WeekSettlement s(ok);
+                    s.run();
+                }
             }
+            // 过完第 18 周：期末结算
             ok.player->study().setScore(90);
-            WeekSettlement last(ok);
-            auto rep = last.run();
+            WeekSettlement::Report rep;
+            while (ok.time->week() == b.weeks) {
+                if (ok.time->advanceDay()) {
+                    WeekSettlement last(ok);
+                    rep = last.run(); // 第 18 周结束时结算（settledWeek=18）
+                }
+            }
             bool hasPass = false, hasScholarship = false;
             for (const auto& line : rep.lines) {
                 if (line.find("稳过") != std::string::npos) hasPass = true;
@@ -551,8 +595,9 @@ int main(int argc, char** argv) {
             g.player->wallet().add(100);
             check(gt.snapshot(g).totalAssets == before + 100, "加钱后快照同步");
 
-            check(s.weeks == cfg.balance().weeks && s.apPerWeek == cfg.balance().apPerWeek,
-                  "周数/行动点来自配置");
+            check(s.weeks == cfg.balance().weeks && s.day == g.time->day() &&
+                      s.hour == g.time->hour(),
+                  "周数/日期时间来自时间系统");
         }
 
         // ---------- 18. C 模块：事件效果联调（W5） ----------

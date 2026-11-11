@@ -2,7 +2,7 @@
   // ============ 教材资料 ============
   {
     "id": "used_book", "name": "二手教材", "category": "教材资料",
-    "basePrice": 25, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "basePrice": 25, "spread": 0.08, "slots": 1, "limitPerDay": 8,
     "soldAt": ["dorm", "library", "westgate"],
     "locFactor": { "library": 0.8, "dorm": 1.15, "westgate": 0.95, "canteen": 1.0, "store": 1.0, "club": 1.15 },
     "peakWeeks": [1, 2, 8, 15, 16, 17, 18],
@@ -10,7 +10,7 @@
   },
   {
     "id": "kaoyan_notes", "name": "考研资料", "category": "教材资料",
-    "basePrice": 40, "spread": 0.08, "slots": 1, "limitPerDay": 25,
+    "basePrice": 40, "spread": 0.08, "slots": 1, "limitPerDay": 5,
     "soldAt": ["library", "store"],
     "locFactor": { "library": 0.8, "store": 1.0, "dorm": 1.15, "club": 1.15, "westgate": 1.0, "canteen": 0.95 },
     "peakWeeks": [8, 15, 16, 17, 18],
@@ -18,7 +18,7 @@
   },
   {
     "id": "print_credit", "name": "打印额度", "category": "教材资料",
-    "basePrice": 15, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "basePrice": 15, "spread": 0.08, "slots": 1, "limitPerDay": 8,
     "soldAt": ["library", "store"],
     "locFactor": { "library": 0.8, "store": 1.05, "dorm": 1.2, "canteen": 1.0, "westgate": 1.0, "club": 1.0 },
     "peakWeeks": [8, 16, 17, 18],
@@ -28,7 +28,7 @@
   // ============ 饮品零食 ============
   {
     "id": "coffee_ticket", "name": "咖啡券", "category": "饮品零食",
-    "basePrice": 12, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "basePrice": 12, "spread": 0.08, "slots": 1, "limitPerDay": 8,
     "soldAt": ["store", "canteen"],
     "locFactor": { "store": 0.8, "canteen": 1.0, "library": 1.2, "club": 1.35, "dorm": 1.05, "westgate": 0.95 },
     "peakWeeks": [9, 15, 16, 17, 18],
@@ -36,7 +36,7 @@
   },
   {
     "id": "milk_tea", "name": "奶茶券", "category": "饮品零食",
-    "basePrice": 15, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "basePrice": 15, "spread": 0.08, "slots": 1, "limitPerDay": 8,
     "soldAt": ["canteen", "club"],
     "locFactor": { "canteen": 0.8, "club": 1.3, "library": 1.15, "dorm": 1.05, "store": 1.0, "westgate": 0.95 },
     "peakWeeks": [3, 10],
@@ -44,7 +44,7 @@
   },
   {
     "id": "snack_box", "name": "零食箱", "category": "饮品零食",
-    "basePrice": 45, "spread": 0.08, "slots": 2, "limitPerDay": 30,
+    "basePrice": 45, "spread": 0.08, "slots": 2, "limitPerDay": 1,
     "soldAt": ["store", "westgate"],
     "locFactor": { "store": 0.8, "westgate": 1.15, "dorm": 1.25, "canteen": 1.0, "library": 1.0, "club": 1.05 },
     "peakWeeks": [10],
@@ -54,7 +54,7 @@
   // ============ 日用应急 ============
   {
     "id": "umbrella", "name": "雨伞", "category": "日用应急",
-    "basePrice": 35, "spread": 0.08, "slots": 1, "limitPerDay": 20,
+    "basePrice": 35, "spread": 0.08, "slots": 1, "limitPerDay": 4,
     "soldAt": ["store", "westgate", "dorm"],
     "locFactor": { "store": 0.85, "westgate": 1.25, "dorm": 1.1, "canteen": 1.0, "library": 1.0, "club": 1.0 },
     "peakWeeks": [],
@@ -64,7 +64,7 @@
   // ============ 数码配件 ============
   {
     "id": "powerbank", "name": "充电宝", "category": "数码配件",
-    "basePrice": 70, "spread": 0.08, "slots": 1, "limitPerDay": 15,
+    "basePrice": 70, "spread": 0.08, "slots": 1, "limitPerDay": 3,
     "soldAt": ["store", "westgate"],
     "locFactor": { "store": 0.8, "westgate": 1.25, "club": 1.15, "library": 1.0, "dorm": 1.1, "canteen": 1.0 },
     "peakWeeks": [9],
@@ -72,7 +72,7 @@
   },
   {
     "id": "cable", "name": "数据线", "category": "数码配件",
-    "basePrice": 18, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "basePrice": 18, "spread": 0.08, "slots": 1, "limitPerDay": 8,
     "soldAt": ["store", "westgate"],
     "locFactor": { "store": 0.85, "westgate": 1.15, "dorm": 1.1, "canteen": 1.0, "library": 1.0, "club": 1.0 },
     "peakWeeks": [9],
@@ -82,7 +82,7 @@
   // ============ 活动文创 ============
   {
     "id": "badge", "name": "社团徽章", "category": "活动文创",
-    "basePrice": 20, "spread": 0.08, "slots": 1, "limitPerDay": 40,
+    "basePrice": 20, "spread": 0.08, "slots": 1, "limitPerDay": 8,
     "soldAt": ["club"],
     "locFactor": { "club": 0.75, "dorm": 1.3, "westgate": 1.2, "canteen": 1.0, "library": 1.0, "store": 1.0 },
     "peakWeeks": [2, 3, 10],
@@ -90,7 +90,7 @@
   },
   {
     "id": "show_ticket", "name": "演出门票", "category": "活动文创",
-    "basePrice": 80, "spread": 0.1, "slots": 1, "limitPerDay": 6,
+    "basePrice": 80, "spread": 0.1, "slots": 1, "limitPerDay": 1,
     "soldAt": ["club", "westgate"],
     "locFactor": { "club": 0.8, "westgate": 1.25, "dorm": 1.15, "canteen": 1.0, "library": 1.0, "store": 1.0 },
     "peakWeeks": [10],

@@ -62,7 +62,8 @@ void EventScheduler::scheduleEffect(int dueWeek, Json effectJson) {
 }
 
 void EventScheduler::applyDueEffects(GameContext& ctx) {
-    int now = ctx.time->week();
+    // 周结算发生在周翻转之后：正在结算的是 time->settledWeek()
+    int now = ctx.time->settledWeek();
     for (auto it = scheduled_.begin(); it != scheduled_.end();) {
         if (it->first <= now) {
             auto eff = EffectFactory::create(it->second);

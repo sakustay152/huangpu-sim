@@ -1,5 +1,7 @@
 #include "core/Session.h"
 
+#include <algorithm>
+
 #include "core/ConfigManager.h"
 #include "core/DomainEvents.h"
 #include "core/EventBus.h"
@@ -10,6 +12,7 @@
 #include "economy/Market.h"
 #include "events/GameEvent.h"
 #include "events/EventScheduler.h"
+#include "player/Player.h"
 #include "stock/StockSystem.h"
 #include "story/StoryFlags.h"
 #include "time/TimeSystem.h"
@@ -17,21 +20,40 @@
 ActionOutcome Session::runAction(GameContext& ctx, const ICommand& cmd) {
     ActionOutcome out;
     if (!ctx.time->canAct()) {
-        out.result = {false, false, "本周行动点已用完（周日晚自动结算）"};
+        out.result = {false, false, "凌晨 2 点的困意压垮了你……（昏迷边缘，先睡觉）"};
         return out;
     }
-    ActionResult r = cmd.execute(ctx);
-    out.result = r;
-    if (!(r.ok && r.consumedAp)) return out;
+    const int weekBefore = ctx.time->week();
+    const int dayBefore = ctx.time->day();
 
-    // 时间推进：一个行动点 = 一天
-    ctx.time->spendAction();
-    // 通过 ITimeListener 接口通知行情（面向接口，不面向实现）
-    ITimeListener& marketListener = *ctx.market;
-    marketListener.onDayTick();
-    // 股价随每次行动波动一格（bilibili 模拟器式随机走；持仓爆仓会在此触发）
+    ActionResult r = cmd.execute(ctx); // 命令内部扣除体力与小时数
+    out.result = r;
+    if (!(r.ok && r.consumedTime)) return out;
+
+    // 股价随每次行动走一根 K 线（持仓爆仓会在此触发）
     ctx.stock->onTick(ctx);
     ctx.bus.publish(ActionTakenEvent{cmd.name()});
+
+    // ---- 昏迷判定：熬过凌晨 2 点（hour >= 26）→ 统一入口处理 ----
+    bool dayChanged = false;
+    {
+        std::string faintMsg;
+        out.weekAdvanced = ctx.handleFaintAndAdvance(faintMsg);
+        if (!faintMsg.empty()) {
+            r.msg += faintMsg;
+            out.result.msg = r.msg;
+            out.fainted = true;
+            dayChanged = true;
+        }
+    }
+
+    // ---- 跨天（睡觉/昏迷推进）：行情按天刷新 ----
+    if (ctx.time->day() != dayBefore || ctx.time->week() != weekBefore) dayChanged = true;
+    if (dayChanged) {
+        ITimeListener& marketListener = *ctx.market;
+        marketListener.onDayTick(); // 限购/噪声按天刷新
+    }
+    if (ctx.time->week() != weekBefore) out.weekAdvanced = true;
 
     // 概率摇随机事件（数据驱动，分工 8.2）
     if (ctx.rng.chance(ctx.config.balance().eventChance)) {

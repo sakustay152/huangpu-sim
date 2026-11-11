@@ -25,8 +25,8 @@ GoalSnapshot GoalTracker::snapshot(const GameContext& ctx) const {
 
     s.week = ctx.time->week();
     s.weeks = b.weeks;
-    s.actionsLeft = ctx.time->actionsLeft();
-    s.apPerWeek = ctx.time->apPerWeek();
+    s.day = ctx.time->day();
+    s.hour = ctx.time->hour();
 
     s.stamina = ctx.player->energy().get();
     s.staminaMax = ctx.player->energy().max();

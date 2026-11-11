@@ -64,6 +64,11 @@ public:
     bool isBankrupt() const;                // 欠债超过破产线
     void updateBankruptcyFlag();            // 欠债超线 → 设置 bankrupt flag
 
+    // ---- 昏迷/宵禁（v2 时间系统统一入口） ----
+    // hour >= 26 时触发：送校医院（扣钱+扣体力上限）、推进到次日 8:00、
+    // 行情按天刷新、位置回宿舍。返回 true = 跨越了周日（调用方需周结算）。
+    bool handleFaintAndAdvance(std::string& appendMsg);
+
 private:
     void wireSubscriptions(); // EventBus 订阅（Observer 模式的接线处）
     std::vector<std::uint64_t> subscriptionIds_; // 析构时逐个退订，避免悬垂捕获

@@ -9,6 +9,11 @@
 #include "player/Inventory.h"
 #include "player/Player.h"
 #include "story/StoryFlags.h"
+#include "time/TimeSystem.h"
+
+void TradeSystem::passMarketHour(GameContext& ctx) const {
+    ctx.time->spendHours(ctx.config.balance().tradeHours);
+}
 
 TradeResult TradeSystem::fail(TradeError c, const std::string& m,
                               int maxQty, int unitPrice) const {
@@ -67,11 +72,12 @@ TradeResult TradeSystem::buy(GameContext& ctx, const std::string& goodsId, int q
                           why + std::to_string(maxQty) + "）", maxQty, unit);
     }
 
-    // 6) 成交
+    // 6) 成交（跑一趟市场：1 小时）
     const int total = unit * qty;
     ctx.player->wallet().spend(total);
     ctx.player->inventory().add(goodsId, qty, static_cast<double>(unit), g->slots);
     ctx.market->consumeQuota(ctx.locationId, goodsId, qty);
+    passMarketHour(ctx);
     ctx.bus.publish(TradeCompletedEvent{goodsId, qty, total, true});
 
     TradeResult r;
@@ -107,6 +113,7 @@ TradeResult TradeSystem::sell(GameContext& ctx, const std::string& goodsId, int 
     const double costBasis = item->avgCost * qty;   // 必须在 remove 之前取
     ctx.player->wallet().add(total);
     ctx.player->inventory().remove(goodsId, qty);
+    passMarketHour(ctx); // 成交一趟市场：1 小时
     ctx.bus.publish(TradeCompletedEvent{goodsId, qty, total, false});
 
     const long long profit = static_cast<long long>(total) - static_cast<long long>(costBasis);

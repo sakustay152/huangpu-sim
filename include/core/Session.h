@@ -16,6 +16,8 @@ class GameEvent;
 struct ActionOutcome {
     ActionResult result;
     const GameEvent* event = nullptr; // 本行动触发的随机事件（可能为空）
+    bool fainted = false;             // 熬过凌晨 2 点 → 昏迷送校医院
+    bool weekAdvanced = false;        // 本行动跨越了周日 → 需要周结算
 };
 
 class Session {

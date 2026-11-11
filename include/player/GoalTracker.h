@@ -17,8 +17,8 @@ struct GoalSnapshot {
     int maxAffinity = 0;
     int week = 0;
     int weeks = 0;
-    int actionsLeft = 0;
-    int apPerWeek = 0;
+    int day = 0;               // 0=周一 … 6=周日
+    int hour = 0;              // 8..26（24 小时制）
     int stamina = 0;
     int staminaMax = 0;
     int slotsUsed = 0;

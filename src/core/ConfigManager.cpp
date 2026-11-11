@@ -11,6 +11,7 @@ ConfigManager::ConfigManager(const std::string& dataDir) : dataDir_(dataDir) {
     loadNpcs();
     loadEndings();
     loadEvents();
+    loadSocialPools();
 
     // ---- 交叉校验：引用完整性 ----
     for (const auto& g : goods_) {
@@ -33,7 +34,12 @@ ConfigManager::ConfigManager(const std::string& dataDir) : dataDir_(dataDir) {
     for (const auto& kv : balance_.jobStamina)
         if (kv.first != "default" && !location(kv.first))
             fail("balance.json jobStamina 引用了不存在的地点 " + kv.first);
-    if (balance_.weeks <= 0 || balance_.apPerWeek <= 0) fail("周数/行动点必须为正");
+    if (balance_.weeks <= 0) fail("周数必须为正");
+    for (const auto& [npcId, pool] : socialPools_) {
+        if (!npc(npcId)) fail("social.json 引用了不存在的 NPC " + npcId);
+        if (pool.positive.empty() || pool.neutral.empty() || pool.negative.empty())
+            fail("social.json NPC " + npcId + " 的选项池必须同时包含正/中/负三类");
+    }
 }
 
 std::string ConfigManager::pathOf(const char* name) const {
@@ -54,18 +60,15 @@ void ConfigManager::loadBalance() {
     balance_.midtermWeek  = ju::getOr(j, "midtermWeek", 8);
     balance_.examStartWeek = ju::getOr(j, "examStartWeek", 17);
     balance_.examStudyBonus = ju::getOr(j, "examStudyBonus", 3);
-    balance_.apPerWeek    = ju::getOr(j, "apPerWeek", 6);
     balance_.maxSlots     = ju::getOr(j, "maxSlots", 30);
     balance_.studyStart   = ju::getOr(j, "studyStart", 40);
-    balance_.studyGain    = ju::getOr(j, "studyGain", 6);
+    balance_.studyGain    = ju::getOr(j, "studyGain", 3);
     balance_.studyDecay   = ju::getOr(j, "studyDecay", 4);
     balance_.passScore    = ju::getOr(j, "passScore", 60);
     balance_.warnScore    = ju::getOr(j, "warnScore", 50);
     balance_.scholarshipScore = ju::getOr(j, "scholarshipScore", 85);
     balance_.scholarship  = ju::getOr(j, "scholarship", 1000);
     balance_.retakeFee    = ju::getOr(j, "retakeFee", 2000);
-    balance_.socialGain   = ju::getOr(j, "socialGain", 15);
-    balance_.restAffinity = ju::getOr(j, "restAffinity", 3);
     balance_.eventChance  = ju::getOr(j, "eventChance", 0.22);
     balance_.rumorAccuracy = ju::getOr(j, "rumorAccuracy", 0.8);
     balance_.trendAmp     = ju::getOr(j, "trendAmp", 0.22);
@@ -106,11 +109,25 @@ void ConfigManager::loadBalance() {
     // 体力
     balance_.staminaMax           = ju::getOr(j, "staminaMax", 100);
     balance_.staminaStockCost     = ju::getOr(j, "staminaStockCost", 15);
-    balance_.staminaRestGain      = ju::getOr(j, "staminaRestGain", 40);
-    balance_.staminaWeeklyRecover = ju::getOr(j, "staminaWeeklyRecover", 30);
     balance_.staminaLowThreshold  = ju::getOr(j, "staminaLowThreshold", 30);
     balance_.staminaLowFailBonus  = ju::getOr(j, "staminaLowFailBonus", 0.15);
     balance_.bankruptcyDebt       = ju::getOr(j, "bankruptcyDebt", 3000);
+
+    // v2 时间系统：行动按"小时 + 体力"计费
+    balance_.moveStamina        = ju::getOr(j, "moveStamina", 5);
+    balance_.moveHours          = ju::getOr(j, "moveHours", 1);
+    balance_.studyStamina       = ju::getOr(j, "studyStamina", 10);
+    balance_.studyHours         = ju::getOr(j, "studyHours", 2);
+    balance_.socialStamina      = ju::getOr(j, "socialStamina", 5);
+    balance_.socialHours        = ju::getOr(j, "socialHours", 2);
+    balance_.workHours          = ju::getOr(j, "workHours", 8);
+    balance_.tradeHours         = ju::getOr(j, "tradeHours", 1);
+    balance_.learnStockHours    = ju::getOr(j, "learnStockHours", 2);
+    balance_.sleepFullHours     = ju::getOr(j, "sleepFullHours", 8);
+    balance_.insomniaChance     = ju::getOr(j, "insomniaChance", 0.10);
+    balance_.insomniaPenaltyHours = ju::getOr(j, "insomniaPenaltyHours", 2);
+    balance_.faintHospitalFee     = ju::getOr(j, "faintHospitalFee", 50);
+    balance_.faintMaxStaminaLoss  = ju::getOr(j, "faintMaxStaminaLoss", 10);
 
     if (j.contains("jobs") && j["jobs"].is_object()) {
         for (auto it = j["jobs"].begin(); it != j["jobs"].end(); ++it) {
@@ -204,6 +221,27 @@ void ConfigManager::loadEndings() {
 void ConfigManager::loadEvents() {
     rawEvents_ = ju::loadFile(pathOf("events.json"));
     if (!rawEvents_.is_array()) fail("events.json 顶层必须是数组");
+}
+
+void ConfigManager::loadSocialPools() {
+    Json j = ju::loadFile(pathOf("social.json"));
+    if (!j.is_object()) fail("social.json 顶层必须是对象（npcId → 池）");
+    for (auto it = j.begin(); it != j.end(); ++it) {
+        SocialPoolDef pool;
+        const Json& p = it.value();
+        if (p.contains("positive") && p["positive"].is_array())
+            for (const auto& e : p["positive"]) pool.positive.push_back(e.get<std::string>());
+        if (p.contains("neutral") && p["neutral"].is_array())
+            for (const auto& e : p["neutral"]) pool.neutral.push_back(e.get<std::string>());
+        if (p.contains("negative") && p["negative"].is_array())
+            for (const auto& e : p["negative"]) pool.negative.push_back(e.get<std::string>());
+        socialPools_[it.key()] = std::move(pool);
+    }
+}
+
+const SocialPoolDef* ConfigManager::socialPool(const std::string& npcId) const {
+    auto it = socialPools_.find(npcId);
+    return it == socialPools_.end() ? nullptr : &it->second;
 }
 
 const GoodsDef* ConfigManager::goods(const std::string& id) const {

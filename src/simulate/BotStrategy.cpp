@@ -8,7 +8,9 @@
 #include "core/ConfigManager.h"
 #include "core/GameContext.h"
 #include "core/IEffect.h"
+#include "core/Random.h"
 #include "core/Session.h"
+#include "core/WeekSettlement.h"
 #include "economy/Market.h"
 #include "events/GameEvent.h"
 #include "player/Inventory.h"
@@ -38,11 +40,30 @@ public:
     }
 };
 
-// 执行一条消耗行动点的命令；途中触发的随机事件由 resolver 立即解决
+// 执行一条消耗时间的命令；途中触发的随机事件由 resolver 立即解决
 bool runApCommand(GameContext& ctx, const ICommand& cmd, const IChoiceResolver& resolver) {
     ActionOutcome out = Session::runAction(ctx, cmd);
     if (out.event) Session::applyChoice(ctx, *out.event, resolver.chooseChoice(*out.event, ctx));
-    return out.result.ok && out.result.consumedAp;
+    return out.result.ok && out.result.consumedTime;
+}
+
+// Bot 社交（v2 选项池版）：从正分池抽一条话题，稳定 +5 好感
+bool botSocialize(GameContext& ctx) {
+    const LocationDef* loc = ctx.config.location(ctx.locationId);
+    if (!loc || loc->npcId.empty()) return false;
+    const SocialPoolDef* pool = ctx.config.socialPool(loc->npcId);
+    if (!pool || pool->positive.empty()) return false;
+    const std::string& text = pool->positive[ctx.rng.next() % pool->positive.size()];
+    ActionOutcome out = Session::runAction(ctx, SocialPickCommand(loc->npcId, text, +5));
+    if (out.event) Session::applyChoice(ctx, *out.event, defaultResolver().chooseChoice(*out.event, ctx));
+    return out.result.ok && out.result.consumedTime;
+}
+
+// 深夜规则：23 点后必须回宿舍睡觉（避免熬过凌晨 2 点昏迷）
+// 注意：周结算由模拟循环统一在周翻转后触发，这里不重复结算
+bool nightSleep(GameContext& ctx, const IChoiceResolver& resolver) {
+    if (ctx.locationId != "dorm") return runApCommand(ctx, MoveCommand("dorm"), resolver);
+    return runApCommand(ctx, SleepCommand(), resolver);
 }
 
 // 某商品在各地的最高卖价（及地点 id）
@@ -65,6 +86,7 @@ public:
     std::string name() const override { return "trader"; }
     bool takeTurn(GameContext& ctx) override {
         if (!ctx.time->canAct()) return false;
+        if (ctx.time->hour() >= 23) return nightSleep(ctx, resolver_);
 
         // 学业底线：期中前把分数拉到 58 以上
         if (ctx.time->week() >= 5 && ctx.player->studyScore() < 58) {
@@ -152,6 +174,7 @@ public:
     std::string name() const override { return "worker"; }
     bool takeTurn(GameContext& ctx) override {
         if (!ctx.time->canAct()) return false;
+        if (ctx.time->hour() >= 23) return nightSleep(ctx, resolver_);
         // 学业及格线策略（保住 60 分即可，不为奖学金浪费行动点）
         if (ctx.player->studyScore() < 62 ||
             (ctx.time->week() >= 6 && !ctx.time->studiedThisWeek() && ctx.player->studyScore() < 70)) {
@@ -172,6 +195,7 @@ public:
     std::string name() const override { return "mixed"; }
     bool takeTurn(GameContext& ctx) override {
         if (!ctx.time->canAct()) return false;
+        if (ctx.time->hour() >= 23) return nightSleep(ctx, resolver_);
 
         // 学业：稳在及格线上方（不冲奖学金——行动点拿去经营更划算）
         if (ctx.player->studyScore() < 70 ||
@@ -213,7 +237,7 @@ public:
             const LocationDef* loc = ctx.config.location(ctx.locationId);
             bool npcHere = loc && !loc->npcId.empty();
             if (npcHere && (urgentSocial || !hasGoodBuyOpportunity(ctx)))
-                return runApCommand(ctx, SocialCommand(), resolver_);
+                return botSocialize(ctx);
             if (urgentSocial) return runApCommand(ctx, MoveCommand("dorm"), resolver_);
         }
 

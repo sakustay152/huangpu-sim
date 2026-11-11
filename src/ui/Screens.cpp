@@ -66,8 +66,9 @@ void CampusScreen::draw() {
     if (!c) return;
     const LocationDef* loc = c->config.location(c->locationId);
     header("第 " + std::to_string(c->time->week()) + " 周 · " + c->time->dayName() +
-           " · 行动点 " + std::to_string(c->time->actionsLeft()) + "/" +
-           std::to_string(c->time->apPerWeek()));
+           " · " + c->time->clockText() +
+           " · 体力 " + std::to_string(c->player->energy().get()) + "/" +
+           std::to_string(c->player->energy().max()));
     line("现金 " + console::paint(money(c->player->wallet().get()), console::GREEN) +
          " ｜ 平时分 " + std::to_string(c->player->studyScore()) +
          " ｜ 体力 " + std::to_string(c->player->energy().get()) + "/" +
@@ -86,8 +87,8 @@ void CampusScreen::draw() {
     std::string social = "[5]社交";
     if (loc && !loc->npcId.empty() && c->config.npc(loc->npcId))
         social = "[5]社交(" + c->config.npc(loc->npcId)->name + ")";
-    line("[1]移动  [2]市场  [3]打工  [4]学习  " + social + "  [6]休息  [x]炒股");
-    line("[7]背包  [8]结束本周  [9]存档  [0]读档  [h]帮助  [q]回标题");
+    line("[1]移动  [2]市场  [3]打工  [4]学习  " + social + "  [6]睡觉  [x]炒股");
+    line("[7]背包  [8]快进到周日结算  [9]存档  [0]读档  [h]帮助  [q]回标题");
 }
 
 void CampusScreen::handleInput(const std::string& in) {
@@ -96,10 +97,10 @@ void CampusScreen::handleInput(const std::string& in) {
     else if (cmd == "2") game_.screens().push(std::make_unique<MarketScreen>(game_));
     else if (cmd == "3") game_.performAction(std::make_unique<WorkCommand>());
     else if (cmd == "4") game_.performAction(std::make_unique<StudyCommand>());
-    else if (cmd == "5") game_.performAction(std::make_unique<SocialCommand>());
-    else if (cmd == "6") game_.performAction(std::make_unique<RestCommand>());
+    else if (cmd == "5") game_.screens().push(std::make_unique<SocialScreen>(game_));
+    else if (cmd == "6") game_.performAction(std::make_unique<SleepCommand>());
     else if (cmd == "7") game_.screens().push(std::make_unique<InventoryScreen>(game_));
-    else if (cmd == "8") game_.requestEndWeek();
+    else if (cmd == "8") game_.finishWeekNow();
     else if (cmd == "9") game_.screens().push(std::make_unique<SaveLoadScreen>(game_, true));
     else if (cmd == "0") game_.screens().push(std::make_unique<SaveLoadScreen>(game_, false));
     else if (cmd == "x") game_.screens().push(std::make_unique<StockScreen>(game_));
@@ -112,13 +113,13 @@ void CampusScreen::handleInput(const std::string& in) {
 void TravelScreen::draw() {
     GameContext* c = game_.ctx();
     if (!c) return;
-    header("去哪儿？（移动耗 1 行动点 + 路费）");
+    header("去哪儿？（移动耗 " + std::to_string(c->config.balance().moveStamina) +
+           " 点体力 · " + std::to_string(c->config.balance().moveHours) + " 小时，不再收路费）");
     int i = 1;
     for (const auto& l : c->config.locations()) {
         std::string prefix = l.id == c->locationId ? "→" : " ";
         line(prefix + " [" + std::to_string(i) + "] " +
-             strutil::padRight(l.name, 14) + "路费 ¥" + std::to_string(l.fare) +
-             "  " + console::paint(l.desc, console::DIM));
+             strutil::padRight(l.name, 14) + "  " + console::paint(l.desc, console::DIM));
         ++i;
     }
     rule();
@@ -237,6 +238,9 @@ void MarketScreen::handleInput(const std::string& in) {
     }
     TradeResult r = isBuy ? c->trade->buy(*c, goodsId, qty) : c->trade->sell(*c, goodsId, qty);
     feedback_ = r.msg;
+    std::string faintMsg;
+    if (c->handleFaintAndAdvance(faintMsg)) game_.requestEndWeek(); // 交易跨过周日凌晨
+    if (!faintMsg.empty()) feedback_ = faintMsg;
 }
 
 // ================= 背包 =================
@@ -509,8 +513,10 @@ void StockScreen::clickLearn() {
         feedback_ = out.result.msg;
     }
     game_.checkBankruptcy();
-    if (out.result.consumedAp && c->time->actionsLeft() == 0 && !c->time->isSemesterOver())
-        game_.requestEndWeek(); // 行动点耗尽：排队周报，退出炒股屏后弹出
+    std::string faintMsg;
+    if (c->handleFaintAndAdvance(faintMsg)) game_.requestEndWeek(); // 交易跨越周日凌晨
+    if (!faintMsg.empty()) feedback_ = faintMsg;
+    // 学股市知识 = 2 小时 + 30 体力；昏迷/周结算由 Session/Game 统一处理
 }
 
 void StockScreen::handleInput(const std::string& in) {
@@ -547,15 +553,76 @@ void StockScreen::handleInput(const std::string& in) {
         return;
     }
     if (tokens[0] == "learn") {
-        clickLearn();
-        if (c->time->actionsLeft() == 0 && !c->time->isSemesterOver())
-            game_.screens().pop(); // 行动点耗尽：弹出排队周报
+        clickLearn(); // 学股市知识 = 2 小时 + 30 体力；昏迷/周结算由 Session/Game 统一处理
         return;
     }
     feedback_ = "命令：b <金额|all> / s all / l 切杠杆 / learn 学股市知识 / q 返回";
 }
 
-// ================= 事件对话框 =================
+// ================= 社交（v2：选项池三选一） =================
+
+void SocialScreen::onEnter() {
+    GameContext* c = game_.ctx();
+    if (!c) return;
+    const LocationDef* loc = c->config.location(c->locationId);
+    if (!loc || loc->npcId.empty() || !c->config.npc(loc->npcId)) {
+        feedback_ = "这里没有能社交的人。";
+        return;
+    }
+    npcId_ = loc->npcId;
+    npcName_ = c->config.npc(npcId_)->name;
+    const SocialPoolDef* pool = c->config.socialPool(npcId_);
+    if (!pool || pool->positive.empty() || pool->neutral.empty() || pool->negative.empty()) {
+        feedback_ = "（" + npcName_ + " 还没有可聊的话题池）";
+        return;
+    }
+    // 从三个池中各抽一条，随机排列展示顺序（不显示分值，玩家凭感觉选）
+    options_ = {
+        {pool->positive[c->rng.next() % pool->positive.size()], +5},
+        {pool->neutral[c->rng.next() % pool->neutral.size()], 0},
+        {pool->negative[c->rng.next() % pool->negative.size()], -5},
+    };
+    for (int i = static_cast<int>(options_.size()) - 1; i > 0; --i) {
+        int j = static_cast<int>(c->rng.next() % static_cast<std::uint64_t>(i + 1));
+        std::swap(options_[static_cast<std::size_t>(i)], options_[static_cast<std::size_t>(j)]);
+    }
+}
+
+void SocialScreen::draw() {
+    GameContext* c = game_.ctx();
+    if (!c) return;
+    header("社交 · " + npcName_ + "（2 小时 · 体力 -" +
+           std::to_string(c->config.balance().socialStamina) + "）");
+    line("和" + npcName_ + "待在一起，你想做点什么？");
+    line();
+    if (!options_.empty()) {
+        char idx = '1';
+        for (const auto& opt : options_) {
+            line(std::string("[") + idx + "] " + opt.text);
+            ++idx;
+        }
+    }
+    rule();
+    line(console::paint(feedback_.empty() ? "输入选项编号执行（每次 2 小时）；[q] 返回" : feedback_,
+                        console::CYAN));
+    if (options_.empty()) line("[q] 返回");
+}
+
+void SocialScreen::handleInput(const std::string& in) {
+    GameContext* c = game_.ctx();
+    if (!c) return;
+    std::string cmd = strutil::toLower(strutil::trim(in));
+    if (cmd == "q" || cmd.empty()) {
+        game_.screens().pop();
+        return;
+    }
+    if (cmd != "1" && cmd != "2" && cmd != "3") return;
+    int pick = cmd[0] - '1';
+    if (pick < 0 || pick >= static_cast<int>(options_.size())) return;
+    const SocialOption& opt = options_[static_cast<std::size_t>(pick)];
+    game_.performAction(std::make_unique<SocialPickCommand>(npcId_, opt.text, opt.delta));
+    game_.screens().pop(); // 执行结果显示在校园屏 lastFeedback 上
+}
 
 // ================= 事件对话框 =================
 
@@ -683,14 +750,13 @@ void EndingScreen::handleInput(const std::string& in) {
 
 void HelpScreen::draw() {
     header("玩法说明");
-    line("· 一学期 16 个教学周 + 第 17、18 周考试周（共 18 周），每周 6 个行动点（1 点 = 1 天），周日结算。");
-    line("· 移动/打工/学习/社交/休息各耗 1 点；同一地点内买卖不耗点。");
-    line("· 炒股：手机随时买卖「浦江文旅（SHU）」，耗体力不耗行动点；可上杠杆融资。");
-    line("  新手胜率只有 ~38%，爆仓会欠债——欠债超过 ¥3000 触发《破产清算》结局。");
-    line("· 低买高卖赚差价：留意地点系数、每周趋势和需求高峰（期中第 8 周、考试季 15~18 周）。");
-    line("· 考试周学习有冲刺加成（图书馆 +9 分），教材/咖啡/打印额度价格飞涨。");
+    line("· 一学期 16 个教学周 + 第 17、18 周考试周（共 18 周）；每天 8:00 起床，24 小时制。");
+    line("· 行动按 小时+体力 计费：移动 1h、学习/社交/学股市 2h、打工 8h；买卖不耗时。");
+    line("· 24:00 后仍不睡，熬过凌晨 2 点会昏迷——送校医院扣钱并降低体力上限！");
+    line("· 回宿舍[6]睡觉推进到次日 8 点：睡得越久回得越多，睡满 8 小时回满；10% 概率失眠。");
+    line("· 学习一次 +3 平时分（考试周 +冲刺）；社交改为三选一，好感 +5/0/-5 看你嘴甜不甜。");
+    line("· 炒股：K 线 + 鼠标交易，耗体力不耗时；杠杆爆仓欠债 ≥ ¥3000 → 《破产清算》。");
     line("· 每周生活费自动扣除；期末总资产 ≥ ¥12000 + 不挂科 + 一位好友 → 好结局。");
-    line("· 社交线：好感 30/60/80 解锁情报、折扣、内部票（先去认识驻地 NPC）。");
     line("· 情报来自室友，每周一条，80% 准确 —— 剩下的 20% 就是人生。");
     line();
     line("[任意键] 返回");

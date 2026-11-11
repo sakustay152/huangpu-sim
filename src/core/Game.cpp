@@ -3,11 +3,14 @@
 #include <iostream>
 
 #include "core/GameContext.h"
+#include "core/ITimeListener.h"
 #include "core/Session.h"
+#include "economy/Market.h"
 #include "events/EndingJudge.h"
 #include "events/EventScheduler.h"
 #include "events/GameEvent.h"
 #include "player/Player.h"
+#include "stock/StockSystem.h"
 #include "story/StoryFlags.h"
 #include "time/TimeSystem.h"
 #include "util/JsonUtil.h"
@@ -119,9 +122,8 @@ void Game::performAction(std::unique_ptr<ICommand> cmd) {
     c->lastFeedback = out.result.msg;
     if (out.event) queueEventDialog(out.event);
     checkBankruptcy(); // 行动中的股价波动可能触发爆仓欠债
-    // 行动点耗尽 → 自动进入周日结算
-    if (out.result.ok && out.result.consumedAp && c->time->actionsLeft() == 0 &&
-        !c->time->isSemesterOver()) {
+    // 跨越周日 → 自动进入周结算
+    if (out.weekAdvanced && !c->time->isSemesterOver()) {
         requestEndWeek();
     }
 }
@@ -140,9 +142,25 @@ void Game::checkBankruptcy() {
     }
 }
 
-void Game::requestEndWeek() {
+// [8] 快进到周日结算：剩余天数逐日睡过（体力回满），然后进入周结算
+void Game::finishWeekNow() {
     GameContext* c = ctx_.get();
     if (!c || endingPending_ || c->time->isSemesterOver()) return;
+    while (true) {
+        const bool weekRolled = c->time->advanceDay();
+        c->player->energy().restoreFull(); // 睡满一整天
+        ITimeListener& marketListener = *c->market;
+        marketListener.onDayTick();
+        c->stock->onTick(*c); // 跳过的天 K 线也照走
+        if (weekRolled || c->time->isSemesterOver()) break;
+    }
+    checkBankruptcy();
+    requestEndWeek();
+}
+
+void Game::requestEndWeek() {
+    GameContext* c = ctx_.get();
+    if (!c || endingPending_) return;
 
     WeekSettlement settle(*c);
     lastReport_ = settle.run();

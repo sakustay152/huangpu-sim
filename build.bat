@@ -4,9 +4,13 @@ REM One-click build (MSVC direct, no CMake needed)
 REM Output in build\: huangpu_sim.exe / huangpu_simulate.exe / huangpu_tests.exe
 REM ============================================================
 setlocal
-set "VSDIR=D:\VisualStudio\Community_2026"
-if not exist "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" (
-    echo [ERROR] MSVC toolchain not found, edit VSDIR in this script.
+REM Auto-detect MSVC across team machines (first hit wins)
+set "VSDIR="
+for %%p in ("D:\visual studio\produce" "D:\VisualStudio\Community_2026" "C:\Program Files\Microsoft Visual Studio\2022\Community") do (
+    if not defined VSDIR if exist "%%~p\VC\Auxiliary\Build\vcvars64.bat" set "VSDIR=%%~p"
+)
+if not defined VSDIR (
+    echo [ERROR] MSVC toolchain not found, edit VSDIR candidates in this script.
     exit /b 1
 )
 
