@@ -104,6 +104,7 @@ void CampusScreen::handleInput(const std::string& in) {
     else if (cmd == "9") game_.screens().push(std::make_unique<SaveLoadScreen>(game_, true));
     else if (cmd == "0") game_.screens().push(std::make_unique<SaveLoadScreen>(game_, false));
     else if (cmd == "x") game_.screens().push(std::make_unique<StockScreen>(game_));
+    else if (cmd == "z") game_.debugJumpToEnding(); // 临时调试
     else if (cmd == "h") game_.screens().push(std::make_unique<HelpScreen>(game_));
     else if (cmd == "q") game_.backToTitle();
 }
@@ -719,6 +720,21 @@ void EndingScreen::draw() {
     GameContext* c = game_.ctx();
     const EndingDef* e = game_.chosenEnding();
     if (!c || !e) return;
+
+    if (askedRestart_) {
+        // 第二页：重新开局选择
+        header("重新开局？");
+        line("十八周，一本账，一段赶路的日子。");
+        line("江水向东，你向西——要不要再赶一程？");
+        line();
+        line("[1] 重新开局（新学期 · 周一 8:00 · 启动资金 ¥" +
+             std::to_string(c->config.balance().startMoney) + "）");
+        line("[2] 回到标题");
+        rule();
+        if (!feedbackAfterRestart_.empty()) line(console::paint(feedbackAfterRestart_, console::CYAN));
+        return;
+    }
+
     header("结局 · 《" + e->title + "》");
     line();
     line(e->text);
@@ -738,11 +754,19 @@ void EndingScreen::draw() {
          " ｜ 学姐 " + std::to_string(c->npcs->affinity("xuejie")));
     line("本学期交易笔数：" + std::to_string(c->player->ledger().size()));
     rule();
-    line("[回车] 回到标题");
+    line("[任意键] 继续");
 }
 
 void EndingScreen::handleInput(const std::string& in) {
-    (void)in;
+    if (!askedRestart_) {
+        askedRestart_ = true; // 任意键：翻到重新开局选择页
+        return;
+    }
+    std::string cmd = strutil::toLower(strutil::trim(in));
+    if (cmd == "1") {
+        game_.newGame(); // 清空旧局、直接开新学期（本屏延迟销毁）
+        return;
+    }
     game_.backToTitle();
 }
 

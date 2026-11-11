@@ -154,6 +154,10 @@ public:
 protected:
     void draw() override;
     void handleInput(const std::string& in) override;
+
+private:
+    bool askedRestart_ = false; // 结局文本看过之后 → 弹出重新开局选择
+    std::string feedbackAfterRestart_;
 };
 
 class HelpScreen : public ConsoleScreen {

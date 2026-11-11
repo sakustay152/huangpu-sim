@@ -142,6 +142,18 @@ void Game::checkBankruptcy() {
     }
 }
 
+// 临时调试：直接跳到结局（验证结局→重开流程用）
+void Game::debugJumpToEnding() {
+    GameContext* c = ctx_.get();
+    if (!c || endingPending_ || chosenEnding_) return;
+    chosenEnding_ = EndingJudge::judge(*c);
+    EndingDecidedEvent e{chosenEnding_->id, chosenEnding_->title};
+    bus().publish(e);
+    endingPending_ = true;
+    pendingDialogs_.clear();
+    screens_.popAll();
+}
+
 // [8] 快进到周日结算：剩余天数逐日睡过（体力回满），然后进入周结算
 void Game::finishWeekNow() {
     GameContext* c = ctx_.get();
@@ -179,6 +191,8 @@ void Game::requestEndWeek() {
     }
 
     queueWeeklyReport(); // 周报最先弹出
+    std::cerr << "[dbg] requestEndWeek: queued report, pending=" << pendingDialogs_.size()
+              << " week=" << c->time->week() << std::endl;
     if (c->time->isSemesterOver()) {
         chosenEnding_ = EndingJudge::judge(*c);
         bus().publish(EndingDecidedEvent{chosenEnding_->id, chosenEnding_->title});
