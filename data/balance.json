@@ -47,7 +47,7 @@
   "insomniaChance": 0.10,
   "insomniaPenaltyHours": 2,
   "faintHospitalFee": 50,
-  "faintMaxStaminaLoss": 10,
+  "faintMaxStaminaLoss": 15,
 
   // 炒股模拟器（灵感：bilibili 炒外汇模拟器；大一学生失败率调高）
   "stockStartPrice": 10,

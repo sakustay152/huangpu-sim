@@ -22,10 +22,10 @@ public:
     void add(int amount);      // 恢复，clamp 到 [0, max]
     void restoreFull() { stamina_ = max_; }
 
-    // 昏迷惩罚：削减体力上限（当前体力随之钳制）
+    // 昏迷惩罚：削减体力上限（当前体力随之钳制）；归 0 触发猝死结局
     void reduceMax(int amount) {
         max_ -= amount;
-        if (max_ < 20) max_ = 20;
+        if (max_ < 0) max_ = 0;
         if (stamina_ > max_) stamina_ = max_;
     }
 

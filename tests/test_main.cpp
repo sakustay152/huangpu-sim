@@ -324,6 +324,21 @@ int main(int argc, char** argv) {
             check(std::abs(pMax - expected) < 1e-9, "收阴概率 = 基准 - 股力修正（下限封顶）");
         }
 
+        // ---------- 12. 猝死隐藏结局：体力上限归 0 ----------
+        std::cout << "\n== 猝死隐藏结局 ==\n";
+        {
+            GameContext dctx(cfg, rng, bus);
+            dctx.initNewGame();
+            dctx.player->energy().reduceMax(cfg.balance().staminaMax); // 连续通宵：上限归 0
+            check(dctx.player->energy().max() == 0, "体力上限归 0");
+            dctx.updateBankruptcyFlag();
+            check(dctx.flags->has("sudden_death"), "体力上限归 0 → 猝死 flag");
+            check(std::string(EndingJudge::judge(dctx)->id) == "sudden_death",
+                  "猝死结局优先判定（priority 0，高于破产）");
+            dctx.player->energy().reduceMax(9999); // 再扣也不为负
+            check(dctx.player->energy().max() == 0, "体力上限钳制到 0（不为负）");
+        }
+
         // ---------- 12. C 模块：交易错误码（W2） ----------
         std::cout << "\n== C 模块：交易错误码 ==\n";
         {

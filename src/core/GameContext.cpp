@@ -45,6 +45,8 @@ bool GameContext::isBankrupt() const {
 
 void GameContext::updateBankruptcyFlag() {
     if (isBankrupt()) flags->set("bankrupt");
+    // 猝死判定：体力上限被昏迷扣到 0（重命名的历史包袱——方法现管两个危险 flag）
+    if (player->energy().max() <= 0) flags->set("sudden_death");
 }
 
 // 昏迷/宵禁统一入口：任何行动（含屏幕上的免费交易）把时间推过凌晨 2 点都会走到这里
