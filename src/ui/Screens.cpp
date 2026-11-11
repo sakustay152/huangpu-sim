@@ -114,7 +114,7 @@ void TravelScreen::draw() {
     GameContext* c = game_.ctx();
     if (!c) return;
     header("去哪儿？（移动耗 " + std::to_string(c->config.balance().moveStamina) +
-           " 点体力 · " + std::to_string(c->config.balance().moveHours) + " 小时，不再收路费）");
+           " 点体力 · " + std::to_string(c->config.balance().moveHours) + " 小时）");
     int i = 1;
     for (const auto& l : c->config.locations()) {
         std::string prefix = l.id == c->locationId ? "→" : " ";
