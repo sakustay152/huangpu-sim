@@ -1,0 +1,277 @@
+[
+  // ============ 固定节点（5）============
+  {
+    "id": "w1_opening", "type": "fixed", "week": 1, "once": true,
+    "name": "开学 · 十六周教学，两场考试",
+    "text": "9 月的第一个周一，你把爸妈给的生活费数了三遍：3000 块。室友阿灿躺在床上刷手机：『听说这学期你不打算要家里钱了？十六个教学周，再加第 17、18 周的考试周——黄浦江边上，又多一个赶日子的人。』",
+    "choices": [
+      {
+        "text": "在账本第一页写下目标：期末攒够下学期学费",
+        "effects": [{ "type": "flag", "flag": "goal_set" }]
+      },
+      { "text": "走一步看一步", "effects": [] }
+    ]
+  },
+  {
+    "id": "w8_midterm", "type": "fixed", "week": 8, "once": true,
+    "name": "期中 · 高压预警",
+    "text": "第 8 周，教学周过半，期中成绩预警名单贴在教务系统首页。倒卖赚的钱不能替你考试——这段时间图书馆的座位突然变得很抢手，打印额度也涨价了。",
+    "choices": [
+      {
+        "text": "泡三天图书馆，冲刺复习",
+        "effects": [{ "type": "study", "delta": 9 }]
+      },
+      { "text": "生意要紧，正常作息", "effects": [] }
+    ]
+  },
+  {
+    "id": "w10_double11", "type": "fixed", "week": 10, "once": true,
+    "name": "双十一 · 深夜抢券",
+    "text": "第 10 周，双十一到了。教育超市的数码配件堆成了小山，快递把西门挤爆了。全宿舍的屏幕都亮着：零点，付定金。",
+    "choices": [
+      {
+        "text": "通宵研究满减凑单，囤数码配件",
+        "effects": [
+          { "type": "priceShock", "goods": "powerbank", "mult": 0.7, "days": 5 },
+          { "type": "priceShock", "goods": "cable", "mult": 0.7, "days": 5 }
+        ]
+      },
+      { "text": "凑什么热闹，呼呼大睡", "effects": [] }
+    ]
+  },
+  {
+    "id": "w17_exam1", "type": "fixed", "week": 17, "once": true,
+    "name": "考试周 · 第一波",
+    "text": "第 17 周，教学周结束，考试周开始。图书馆通宵自习室一座难求，咖啡券和打印额度成了硬通货——而你的账本，也翻到了最后几页。",
+    "choices": [
+      {
+        "text": "通宵复习，顺便把咖啡囤给熬夜的人",
+        "effects": [
+          { "type": "study", "delta": 9 },
+          { "type": "priceShock", "goods": "coffee_ticket", "mult": 1.4, "days": 4 }
+        ]
+      },
+      { "text": "按计划复习，不折腾", "effects": [] }
+    ]
+  },
+  {
+    "id": "w18_final", "type": "fixed", "week": 18, "once": true,
+    "name": "考试周 · 最后一科",
+    "text": "第 18 周，最后一门考试。图书馆坐满了人，你的账本也到了写最后一行的时候。这一学期每一笔买卖、每一次熬夜、每一顿和朋友吃的饭，都将于本周日一并结算。",
+    "choices": [
+      { "text": "合上账本，走进考场", "effects": [] },
+      { "text": "听天由命", "effects": [] }
+    ]
+  },
+
+  // ============ 随机事件（10）============
+  {
+    "id": "rain", "type": "random", "weight": 12, "cooldown": 3,
+    "name": "暴雨突袭",
+    "text": "下午天说黑就黑，暴雨砸在教学楼的玻璃上。没带伞的人挤在楼道里刷手机，外卖平台的小哥在雨里骂街。",
+    "choices": [
+      {
+        "text": "冲去把伞卖给他们",
+        "effects": [{ "type": "priceShock", "goods": "umbrella", "mult": 1.8, "days": 2 }]
+      },
+      {
+        "text": "宅着点个外卖",
+        "effects": [{ "type": "money", "amount": -20 }]
+      }
+    ]
+  },
+  {
+    "id": "express", "type": "random", "weight": 12, "cooldown": 3,
+    "name": "快递爆仓",
+    "text": "西门快递点门口纸箱堆成山，站长举着喇叭喊：『日结 100，帮忙分拣代取！』",
+    "conditions": [
+      { "type": "locationIs", "location": "westgate" },
+      { "type": "weekBetween", "min": 9, "max": 11 }
+    ],
+    "choices": [
+      { "text": "撸起袖子帮忙代取", "effects": [{ "type": "money", "amount": 100 }] },
+      {
+        "text": "不搬箱子，顺手囤雨伞",
+        "effects": [{ "type": "priceShock", "goods": "umbrella", "mult": 1.6, "days": 3 }]
+      }
+    ]
+  },
+  {
+    "id": "near_expiry", "type": "random", "weight": 10, "cooldown": 4,
+    "name": "临期打折",
+    "text": "教育超市角落贴出告示：『零食箱临期特惠，整箱 120 元清仓』——原价的三分之一。但是临期货，得快出手。",
+    "conditions": [
+      { "type": "locationIs", "location": "store" },
+      { "type": "minMoney", "value": 150 }
+    ],
+    "choices": [
+      {
+        "text": "低价吃进两箱",
+        "effects": [
+          { "type": "money", "amount": -120 },
+          { "type": "item", "goods": "snack_box", "qty": 8 }
+        ]
+      },
+      { "text": "临期的东西不碰", "effects": [] }
+    ]
+  },
+  {
+    "id": "inspection", "type": "random", "weight": 8, "cooldown": 4,
+    "name": "查寝",
+    "text": "楼长带着值班老师在走廊挨个敲门：『大件物品堆放规范检查！』你床底下塞着几件货。",
+    "conditions": [{ "type": "locationIs", "location": "dorm" }],
+    "choices": [
+      { "text": "花 50 块雇人连夜转移", "effects": [{ "type": "money", "amount": -50 }] },
+      {
+        "text": "大方摆出来，分给室友",
+        "effects": [{ "type": "affinity", "npc": "roommate", "delta": 10 }]
+      }
+    ]
+  },
+  {
+    "id": "borrow", "type": "random", "weight": 8, "cooldown": 8,
+    "name": "室友借钱",
+    "text": "阿灿难得红着脸开口：『我妈住院了，周转一下，500 块，三周内肯定还你。』你想起他的二手群里躺着几千块流水。",
+    "conditions": [
+      { "type": "locationIs", "location": "dorm" },
+      { "type": "affinityMin", "npc": "roommate", "value": 30 },
+      { "type": "minMoney", "value": 500 }
+    ],
+    "choices": [
+      {
+        "text": "转给他 500",
+        "effects": [
+          { "type": "money", "amount": -500 },
+          { "type": "affinity", "npc": "roommate", "delta": 20 },
+          {
+            "type": "scheduled", "weeks": 3,
+            "effect": { "type": "money", "amount": 600 }
+          }
+        ]
+      },
+      { "text": "『我也紧』婉拒", "effects": [{ "type": "affinity", "npc": "roommate", "delta": -10 }] }
+    ]
+  },
+  {
+    "id": "auntie", "type": "random", "weight": 10, "cooldown": 3,
+    "name": "阿姨手抖",
+    "text": "食堂阿姨今天手一抖，你餐盘里的红烧肉堆成了小山——而你只点了一荤一素。",
+    "conditions": [{ "type": "locationIs", "location": "canteen" }],
+    "choices": [
+      { "text": "默默吃完，血赚一顿", "effects": [{ "type": "money", "amount": 30 }] },
+      {
+        "text": "留下来帮忙收餐台",
+        "effects": [{ "type": "money", "amount": 15 }]
+      }
+    ]
+  },
+  {
+    "id": "seat_war", "type": "random", "weight": 8, "cooldown": 3,
+    "name": "占座风波",
+    "text": "图书馆四楼，两张占座条在一张桌子上对峙。旁边的陈学长小声问：『同学，明天早上能帮我占个座吗？』",
+    "conditions": [{ "type": "locationIs", "location": "library" }],
+    "choices": [
+      { "text": "帮他占座（早起排队）", "effects": [{ "type": "affinity", "npc": "senior", "delta": 8 }] },
+      { "text": "低头复习，捡到一本被落下的高分笔记", "effects": [{ "type": "study", "delta": 6 }] }
+    ]
+  },
+  {
+    "id": "recruit", "type": "random", "weight": 20, "cooldown": 2,
+    "name": "社团招新",
+    "text": "大学生活动中心门口摆满摊位，苏晴站在文创社的桌子后面朝你招手：『来玩啊，我们缺一个会算账的！』",
+    "conditions": [
+      { "type": "locationIs", "location": "club" },
+      { "type": "weekBetween", "min": 1, "max": 3 },
+      { "type": "hasFlag", "flag": "not:club_member" }
+    ],
+    "choices": [
+      {
+        "text": "加入文创社",
+        "effects": [
+          { "type": "flag", "flag": "club_member" },
+          { "type": "affinity", "npc": "xuejie", "delta": 10 }
+        ]
+      },
+      { "text": "只在门口围观", "effects": [] }
+    ]
+  },
+  {
+    "id": "night_market", "type": "random", "weight": 10, "cooldown": 3,
+    "name": "夜市出摊",
+    "text": "西门夜市亮起灯，管理费一晚 20。你有货，夜市有客流——要不要干一票？",
+    "conditions": [
+      { "type": "locationIs", "location": "westgate" },
+      { "type": "inventoryNotEmpty" }
+    ],
+    "choices": [
+      { "text": "支个小摊卖库存", "effects": [{ "type": "randomMoney", "min": 60, "max": 150 }] },
+      { "text": "算了，收摊回家", "effects": [] }
+    ]
+  },
+  {
+    "id": "blackout", "type": "random", "weight": 8, "cooldown": 3,
+    "name": "停电夜",
+    "text": "整栋宿舍楼突然黑了——电路检修。黑暗里此起彼伏地响起『我手机还剩 3%』的哀嚎，充电宝一夜之间成了硬通货。",
+    "conditions": [
+      { "type": "locationIs", "location": "dorm" },
+      { "type": "weekBetween", "min": 7, "max": 11 }
+    ],
+    "choices": [
+      {
+        "text": "点蜡烛夜读，顺便把充电宝挂二手群",
+        "effects": [
+          { "type": "study", "delta": 6 },
+          { "type": "priceShock", "goods": "powerbank", "mult": 1.4, "days": 2 }
+        ]
+      },
+      { "text": "停电正好，睡觉", "effects": [] }
+    ]
+  },
+
+  // ============ NPC 小线（3）============
+  {
+    "id": "bro_talk", "type": "npc", "npc": "roommate", "minAffinity": 50, "once": true,
+    "name": "深夜卧谈",
+    "text": "熄灯后，阿灿突然开口：『其实我妈住院那次，我根本开不了口跟家里要钱……幸亏有你。兄弟，你这人，处得来。』",
+    "conditions": [{ "type": "locationIs", "location": "dorm" }],
+    "choices": [
+      {
+        "text": "『下学期学费我跟你一起想办法。』",
+        "effects": [
+          { "type": "affinity", "npc": "roommate", "delta": 10 },
+          { "type": "flag", "flag": "bro_talk" }
+        ]
+      },
+      { "text": "『睡吧，明天还要早起。』", "effects": [] }
+    ]
+  },
+  {
+    "id": "senior_notes", "type": "npc", "npc": "senior", "minAffinity": 40, "once": true,
+    "name": "学长的资料柜",
+    "text": "陈学长把一个文件夹拍在你面前：『我整理的考研资料，复印铺老板认我的名字。你帮我搬三天书，我带你去拿内部价。』",
+    "conditions": [{ "type": "locationIs", "location": "library" }],
+    "choices": [
+      {
+        "text": "搬！三天搬出个交情",
+        "effects": [
+          { "type": "affinity", "npc": "senior", "delta": 8 },
+          { "type": "flag", "flag": "senior_notes" }
+        ]
+      },
+      { "text": "最近排班太满，婉拒", "effects": [] }
+    ]
+  },
+  {
+    "id": "inner_ticket", "type": "npc", "npc": "xuejie", "minAffinity": 60, "once": true,
+    "name": "学姐的内部票",
+    "text": "菊文化节前夜，苏晴神秘地压低声音：『社团内部票，渠道价给你。外面抢破头的那场演出——你敢不敢接？』",
+    "conditions": [{ "type": "locationIs", "location": "club" }],
+    "choices": [
+      {
+        "text": "接！高价转手我来想办法",
+        "effects": [{ "type": "flag", "flag": "inner_ticket" }]
+      },
+      { "text": "『太冒险了，算了』", "effects": [] }
+    ]
+  }
+]

@@ -1,0 +1,103 @@
+{
+  "name": "main",
+  "commit": {
+    "sha": "2266a1d7dcb9d9ac62929b804af7c81f488415d7",
+    "node_id": "C_kwDOVmNf0doAKDIyNjZhMWQ3ZGNiOWQ5YWM2MjkyOWI4MDRhZjdjODFmNDg4NDE1ZDc",
+    "commit": {
+      "author": {
+        "name": "sakustay152",
+        "email": "337737745+sakustay152@users.noreply.github.com",
+        "date": "2026-11-12T16:29:40Z"
+      },
+      "committer": {
+        "name": "sakustay152",
+        "email": "337737745+sakustay152@users.noreply.github.com",
+        "date": "2026-11-12T16:29:40Z"
+      },
+      "message": "social: expand option pools to 10 per type per NPC (90 total, more draw variety)",
+      "tree": {
+        "sha": "5a3cc82927175984e1564e93a81f3ec1e5d9ebca",
+        "url": "https://api.github.com/repos/sakustay152/huangpu-sim/git/trees/5a3cc82927175984e1564e93a81f3ec1e5d9ebca"
+      },
+      "url": "https://api.github.com/repos/sakustay152/huangpu-sim/git/commits/2266a1d7dcb9d9ac62929b804af7c81f488415d7",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/sakustay152/huangpu-sim/commits/2266a1d7dcb9d9ac62929b804af7c81f488415d7",
+    "html_url": "https://github.com/sakustay152/huangpu-sim/commit/2266a1d7dcb9d9ac62929b804af7c81f488415d7",
+    "comments_url": "https://api.github.com/repos/sakustay152/huangpu-sim/commits/2266a1d7dcb9d9ac62929b804af7c81f488415d7/comments",
+    "author": {
+      "login": "sakustay152",
+      "id": 337737745,
+      "node_id": "U_kgDOFCF4EQ",
+      "avatar_url": "https://avatars.githubusercontent.com/u/337737745?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/sakustay152",
+      "html_url": "https://github.com/sakustay152",
+      "followers_url": "https://api.github.com/users/sakustay152/followers",
+      "following_url": "https://api.github.com/users/sakustay152/following{/other_user}",
+      "gists_url": "https://api.github.com/users/sakustay152/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/sakustay152/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/sakustay152/subscriptions",
+      "organizations_url": "https://api.github.com/users/sakustay152/orgs",
+      "repos_url": "https://api.github.com/users/sakustay152/repos",
+      "events_url": "https://api.github.com/users/sakustay152/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/sakustay152/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "sakustay152",
+      "id": 337737745,
+      "node_id": "U_kgDOFCF4EQ",
+      "avatar_url": "https://avatars.githubusercontent.com/u/337737745?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/sakustay152",
+      "html_url": "https://github.com/sakustay152",
+      "followers_url": "https://api.github.com/users/sakustay152/followers",
+      "following_url": "https://api.github.com/users/sakustay152/following{/other_user}",
+      "gists_url": "https://api.github.com/users/sakustay152/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/sakustay152/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/sakustay152/subscriptions",
+      "organizations_url": "https://api.github.com/users/sakustay152/orgs",
+      "repos_url": "https://api.github.com/users/sakustay152/repos",
+      "events_url": "https://api.github.com/users/sakustay152/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/sakustay152/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "4a61f49454ef5cc58799e157b2af62b6f75a6b10",
+        "url": "https://api.github.com/repos/sakustay152/huangpu-sim/commits/4a61f49454ef5cc58799e157b2af62b6f75a6b10",
+        "html_url": "https://github.com/sakustay152/huangpu-sim/commit/4a61f49454ef5cc58799e157b2af62b6f75a6b10"
+      }
+    ]
+  },
+  "_links": {
+    "self": "https://api.github.com/repos/sakustay152/huangpu-sim/branches/main",
+    "html": "https://github.com/sakustay152/huangpu-sim/tree/main"
+  },
+  "protected": false,
+  "protection": {
+    "enabled": false,
+    "required_status_checks": {
+      "enforcement_level": "off",
+      "contexts": [
+
+      ],
+      "checks": [
+
+      ]
+    }
+  },
+  "protection_url": "https://api.github.com/repos/sakustay152/huangpu-sim/branches/main/protection"
+}
