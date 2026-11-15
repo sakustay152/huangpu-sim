@@ -78,20 +78,6 @@ void CampusScreen::draw() {
          std::to_string(c->player->inventory().capacity()) + " 格");
     line("当前地点：" + console::paint(loc ? loc->name : c->locationId, console::YELLOW) +
          "（目标：期末总资产 ≥ " + money(c->config.balance().targetMoney) + "，不挂科）");
-    // ---- 目标进度条（GoalTracker 快照，与结局判定同口径） ----
-    {
-        GoalTracker tracker;
-        auto gs = tracker.snapshot(*c);
-        int pct = gs.targetMoney > 0 ? std::min(100, gs.totalAssets * 100 / gs.targetMoney) : 0;
-        int cells = pct / 10;
-        std::string bar;
-        for (int i = 0; i < 10; ++i) bar += (i < cells) ? "█" : "░";
-        std::string tone = pct >= 100 ? console::GREEN : (pct >= 50 ? console::YELLOW : console::RED);
-        line("目标进度 [" + console::paint(bar, tone.c_str()) + "] " +
-             console::paint(std::to_string(pct) + "%", tone.c_str()) +
-             " ｜ 挚友好感 " + std::to_string(gs.maxAffinity) + "/60" +
-             " ｜ 考试线 " + std::to_string(gs.studyScore) + "/60");
-    }
     if (!c->rumors.empty()) {
         rule();
         for (const auto& r : c->rumors) line(console::paint(r, console::MAGENTA));
