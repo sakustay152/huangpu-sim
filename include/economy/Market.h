@@ -47,6 +47,16 @@ public:
     // 趋势箭头（UI 用）：▲ ▼ ─
     const char* trendArrow(const std::string& locId, const std::string& goodsId) const;
 
+    // 天气（v2）：雨天雨伞价格上浮（由 GameContext 每天调用）
+    void applyWeather(int weather);
+    double rainFactor() const { return rainFactor_; }
+
+    // 每日特惠（v2）：随机"地点×商品"当日买卖 75 折
+    bool hasSpecial() const { return !specialGoods_.empty(); }
+    const std::string& specialGoods() const { return specialGoods_; }
+    const std::string& specialLoc() const { return specialLoc_; }
+    bool isSpecial(const std::string& locId, const std::string& goodsId) const;
+
     // ---- ITimeListener ----
     void onDayTick() override;   // 噪声重摇 + 冲击衰减 + 限购重置（每次到访=1天）
     void onWeekStart() override; // 周趋势刷新（消化上周情报）
@@ -73,11 +83,15 @@ private:
     double noiseOf(const std::string& goodsId) const;
     double shockOf(const std::string& goodsId) const;
     void resetQuotas();
+    void rollDailySpecial(); // 每日特惠：随机"地点×商品"组合
 
     const ConfigManager& cfg_;
     Random& rng_;
     std::unique_ptr<IPriceModel> chain_; // 价格因子链（策略+装饰器）
     int week_ = 1;
+    double rainFactor_ = 1.0;  // 雨天雨伞价格系数（1.0 = 无影响）
+    std::string specialGoods_; // 每日特惠商品（空 = 无）
+    std::string specialLoc_;   // 每日特惠地点
 
     std::map<std::string, std::map<std::string, double>> trend_; // loc→goods→trend
     std::map<std::string, double> noiseMult_;                    // goods→乘数

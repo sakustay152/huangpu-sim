@@ -81,6 +81,7 @@ private:
     std::string npcId_;
     std::string npcName_;
     std::string feedback_;
+    bool hasGift_ = false; // 背包有专属赠礼 → 显示送礼入口
 };
 
 // 炒股屏：bilibili fx-simple 风格 —— K 线图 + 鼠标点击按钮交易/杠杆/学股市知识
@@ -109,6 +110,7 @@ private:
     void clickSellAll();
     void clickCycleLeverage();
     void clickLearn();
+    void clickCaffeine(); // 咖啡提神：消耗咖啡券回体力（不耗时间）
 };
 
 class EventDialogScreen : public ConsoleScreen {
@@ -158,6 +160,16 @@ protected:
 private:
     bool askedRestart_ = false; // 结局文本看过之后 → 弹出重新开局选择
     std::string feedbackAfterRestart_;
+};
+
+// 成就屏：列出全部成就（解锁 ✔ / 未解锁 ？）
+class AchievementsScreen : public ConsoleScreen {
+public:
+    using ConsoleScreen::ConsoleScreen;
+    const char* id() const override { return "achievements"; }
+protected:
+    void draw() override;
+    void handleInput(const std::string& in) override;
 };
 
 class HelpScreen : public ConsoleScreen {

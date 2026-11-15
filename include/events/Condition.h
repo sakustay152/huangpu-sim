@@ -49,6 +49,24 @@ private:
     int v_;
 };
 
+// 股力下限（成就/事件用）
+class StockSkillAtLeast : public ICondition {
+public:
+    explicit StockSkillAtLeast(int v) : v_(v) {}
+    bool test(const GameContext& ctx) const override;
+private:
+    int v_;
+};
+
+// 平时分下限（成就用）
+class StudyAtLeast : public ICondition {
+public:
+    explicit StudyAtLeast(int v) : v_(v) {}
+    bool test(const GameContext& ctx) const override;
+private:
+    int v_;
+};
+
 // 拥有 / 未拥有 flag
 class HasFlag : public ICondition {
 public:

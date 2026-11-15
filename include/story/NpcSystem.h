@@ -19,6 +19,12 @@ public:
     void addAffinity(const std::string& npcId, int delta);
     bool atLeast(const std::string& npcId, int v) const { return affinity(npcId) >= v; }
 
+    // 记录本周与某 NPC 社交过（好感衰减判定用）
+    void markSocial(const std::string& npcId, int week);
+
+    // 周结算：上周未互动的 NPC 好感自然衰减（clamp 0）
+    void applyWeeklyDecay(int decay, int settledWeek);
+
     // 全 NPC 里最高的好感（结局判定用）
     int maxAffinity() const;
 
@@ -28,4 +34,5 @@ public:
 private:
     const ConfigManager& cfg_;
     std::map<std::string, int> affinity_;
+    std::map<std::string, int> lastSocialWeek_; // npcId → 最近社交的周次
 };

@@ -35,6 +35,9 @@ public:
     // social.json：NPC 社交选项池（v2 社交三选一）
     const SocialPoolDef* socialPool(const std::string& npcId) const;
 
+    // achievements.json：成就定义
+    const std::vector<AchievementDef>& achievements() const { return achievements_; }
+
     const std::string& dataDir() const { return dataDir_; }
 
 private:
@@ -48,6 +51,7 @@ private:
     std::vector<EndingDef> endings_;
     Json rawEvents_;
     std::map<std::string, SocialPoolDef> socialPools_; // npcId → 选项池
+    std::vector<AchievementDef> achievements_;          // 成就定义
 
     void loadBalance();
     void loadGoods();
@@ -56,6 +60,7 @@ private:
     void loadEndings();
     void loadEvents();
     void loadSocialPools();
+    void loadAchievements();
 
     [[noreturn]] void fail(const std::string& what) const;
 };

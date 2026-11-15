@@ -28,6 +28,11 @@ public:
     const char* dayName() const;
     std::string clockText() const;                // "14:00" / "次日 01:00"
 
+    // 天气（每天由调用方 roll：0 晴 / 1 雨）
+    void setWeather(int w) { weather_ = (w == 1) ? 1 : 0; }
+    int weather() const { return weather_; }
+    const char* weatherName() const { return weather_ == 1 ? "雨" : "晴"; }
+
     bool canAct() const { return hour_ < kCurfewHour && !isSemesterOver(); }
     bool isSemesterOver() const { return week_ > weeks_; }
 
@@ -55,6 +60,7 @@ private:
     int week_ = 1;
     int day_ = 0;      // 0=周一 … 6=周日
     int hour_ = kWakeHour;
+    int weather_ = 0;  // 0 晴 / 1 雨
     bool studiedThisWeek_ = false;
     bool lastWeekStudied_ = false;
     std::map<std::string, int> weeklyHours_; // 本周各用途耗时（周日结算后清零）

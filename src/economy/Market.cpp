@@ -30,12 +30,40 @@ double Market::shockOf(const std::string& goodsId) const {
     return it == shock_.end() ? 1.0 : it->second.first;
 }
 
+void Market::applyWeather(int weather) {
+    // 雨天：雨伞价格上浮（配置系数），晴天恢复
+    const BalanceDef& b = cfg_.balance();
+    rainFactor_ = (weather == 1) ? b.umbrellaRainFactor : 1.0;
+}
+
+void Market::rollDailySpecial() {
+    // 每日特惠：随机挑一个"有售地点 × 商品"组合，当日 75 折
+    const auto& goods = cfg_.goods();
+    if (goods.empty()) return;
+    int total = 0;
+    for (const auto& g : goods) total += static_cast<int>(g.soldAt.size());
+    if (total <= 0) return;
+    int pick = static_cast<int>(rng_.next() % static_cast<std::uint64_t>(total));
+    for (const auto& g : goods) {
+        if (pick >= static_cast<int>(g.soldAt.size())) {
+            pick -= static_cast<int>(g.soldAt.size());
+            continue;
+        }
+        specialGoods_ = g.id;
+        specialLoc_ = g.soldAt[static_cast<std::size_t>(pick)];
+        break;
+    }
+}
+
 double Market::midPrice(const std::string& locId, const std::string& goodsId) const {
     const GoodsDef* g = cfg_.goods(goodsId);
     const LocationDef* l = cfg_.location(locId);
     if (!g || !l) return 1.0;
     PriceContext c{*g, *l, week_, trendOf(locId, goodsId), noiseOf(goodsId), shockOf(goodsId)};
-    return chain_->price(c);
+    double mid = chain_->price(c);
+    if (goodsId == "umbrella" && rainFactor_ > 1.0) mid *= rainFactor_; // 雨天雨伞走俏
+    if (isSpecial(locId, goodsId)) mid *= 0.75; // 每日特惠：当日 75 折
+    return mid;
 }
 
 int Market::buyPrice(const std::string& locId, const std::string& goodsId) const {
@@ -102,6 +130,7 @@ void Market::onDayTick() {
         else ++it;
     }
     resetQuotas(); // 限购按"次到访/天"刷新（分工 3.4：每地点每日 10-20 件）
+    rollDailySpecial(); // 每日特惠：随机一个"地点×商品"组合
 }
 
 void Market::resetQuotas() {
@@ -142,6 +171,10 @@ void Market::rollRumor() {
                           std::to_string(static_cast<int>(cfg_.balance().rumorAccuracy * 100)) + "%");
 }
 
+bool Market::isSpecial(const std::string& locId, const std::string& goodsId) const {
+    return !specialGoods_.empty() && locId == specialLoc_ && goodsId == specialGoods_;
+}
+
 const char* Market::trendArrow(const std::string& locId, const std::string& goodsId) const {
     double t = trendOf(locId, goodsId);
     if (t > 0.06) return "▲";
@@ -169,6 +202,9 @@ Json Market::toJson() const {
     }
     Json rumor;
     if (hasRumor_) rumor = Json{{"goods", pendingRumor_.goodsId}, {"up", pendingRumor_.up}};
+    Json special;
+    if (!specialGoods_.empty())
+        special = Json{{"goods", specialGoods_}, {"loc", specialLoc_}};
     return Json{
         {"week", week_},
         {"trend", trends},
@@ -177,6 +213,8 @@ Json Market::toJson() const {
         {"quota", quotas},
         {"pendingRumor", rumor},
         {"rumorTexts", rumorTexts_},
+        {"specialGoods", specialGoods_},
+        {"specialLoc", specialLoc_},
     };
 }
 
@@ -214,4 +252,10 @@ void Market::fromJson(const Json& j) {
     rumorTexts_.clear();
     if (j.contains("rumorTexts") && j["rumorTexts"].is_array())
         for (const auto& t : j["rumorTexts"]) rumorTexts_.push_back(t.get<std::string>());
+    specialGoods_ = ju::getOr<std::string>(j, "specialGoods", "");
+    specialLoc_ = ju::getOr<std::string>(j, "specialLoc", "");
+    if (!cfg_.goods(specialGoods_) || !cfg_.location(specialLoc_)) {
+        specialGoods_.clear();
+        specialLoc_.clear();
+    }
 }

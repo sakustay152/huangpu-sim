@@ -47,6 +47,7 @@ Json TimeSystem::toJson() const {
         {"week", week_},
         {"day", day_},
         {"hour", hour_},
+        {"weather", weather_},
         {"studiedThisWeek", studiedThisWeek_},
         {"lastWeekStudied", lastWeekStudied_},
         {"weeklyHours", wh},
@@ -57,6 +58,7 @@ void TimeSystem::fromJson(const Json& j) {
     week_ = ju::getOr(j, "week", week_);
     day_ = ju::getOr(j, "day", day_);
     hour_ = ju::getOr(j, "hour", hour_);
+    weather_ = ju::getOr(j, "weather", 0);
     studiedThisWeek_ = ju::getOr(j, "studiedThisWeek", studiedThisWeek_);
     lastWeekStudied_ = ju::getOr(j, "lastWeekStudied", lastWeekStudied_);
     if (hour_ < kWakeHour) hour_ = kWakeHour;

@@ -28,6 +28,14 @@ bool TotalAssetsMin::test(const GameContext& ctx) const {
     return ctx.player->wallet().get() + ctx.trade->estimatePortfolioValue(ctx) >= v_;
 }
 
+bool StockSkillAtLeast::test(const GameContext& ctx) const {
+    return ctx.player->stockSkill() >= v_;
+}
+
+bool StudyAtLeast::test(const GameContext& ctx) const {
+    return ctx.player->studyScore() >= v_;
+}
+
 bool HasFlag::test(const GameContext& ctx) const {
     // "not:xxx" 前缀 = 取反（结局条件里用：not:failed 表示"没挂科"）
     if (flag_.size() > 4 && flag_.compare(0, 4, "not:") == 0)
@@ -57,6 +65,10 @@ std::unique_ptr<ICondition> ConditionFactory::create(const Json& j) {
         return std::make_unique<MinMoney>(ju::getOr(j, "value", 0));
     if (type == "totalAssetsMin")
         return std::make_unique<TotalAssetsMin>(ju::getOr(j, "value", 0));
+    if (type == "stockSkillAtLeast")
+        return std::make_unique<StockSkillAtLeast>(ju::getOr(j, "value", 0));
+    if (type == "studyAtLeast")
+        return std::make_unique<StudyAtLeast>(ju::getOr(j, "value", 0));
     if (type == "hasFlag")
         return std::make_unique<HasFlag>(ju::getOr<std::string>(j, "flag", ""));
     if (type == "affinityMin")

@@ -247,6 +247,80 @@
     ]
   },
   {
+    "id": "club_fund_missing", "type": "random", "weight": 8, "cooldown": 4,
+    "name": "社团经费失踪",
+    "text": "文艺部的活动经费对不上账，苏晴急得在活动中心团团转——上面要查账了。",
+    "conditions": [
+      { "type": "locationIs", "location": "club" },
+      { "type": "affinityMin", "npc": "xuejie", "value": 20 }
+    ],
+    "choices": [
+      {
+        "text": "通宵帮她把三个月的账目捋平",
+        "effects": [
+          { "type": "affinity", "npc": "xuejie", "delta": 10 },
+          { "type": "study", "delta": -2 }
+        ]
+      },
+      { "text": "这是部长该操心的事", "effects": [{ "type": "affinity", "npc": "xuejie", "delta": -5 }] }
+    ]
+  },
+  {
+    "id": "parcel_lost", "type": "random", "weight": 9, "cooldown": 3,
+    "name": "驿站爆仓丢件",
+    "text": "菜鸟驿站堆成山的包裹里丢了件，投诉电话被打爆——你也被卷进了找件大军。",
+    "choices": [
+      {
+        "text": "帮驿站翻箱倒柜找件",
+        "effects": [{ "type": "money", "amount": 60 }]
+      },
+      { "text": "围观吃瓜", "effects": [] }
+    ]
+  },
+  {
+    "id": "radio_dedication", "type": "random", "weight": 7, "cooldown": 4,
+    "name": "校园广播点歌",
+    "text": "校园广播站午间点歌时段：30 元点一首歌送给任何人，还可以留言。",
+    "choices": [
+      {
+        "text": "点一首歌送给室友",
+        "effects": [
+          { "type": "money", "amount": -30 },
+          { "type": "affinity", "npc": "roommate", "delta": 8 }
+        ]
+      },
+      { "text": "省下这 30 块", "effects": [] }
+    ]
+  },
+  {
+    "id": "secondhand_flood", "type": "random", "weight": 9, "cooldown": 3,
+    "name": "二手群涌进新人",
+    "text": "期末临近，阿灿的二手群一夜涌进两百个新人，求购教材的消息刷了满屏。",
+    "choices": [
+      {
+        "text": "顺势清一波教材库存",
+        "effects": [{ "type": "priceShock", "goods": "used_book", "mult": 1.25, "days": 3 }]
+      },
+      { "text": "让阿灿自己应付", "effects": [{ "type": "affinity", "npc": "roommate", "delta": -3 }] }
+    ]
+  },
+  {
+    "id": "senior_trip", "type": "random", "weight": 7, "cooldown": 4,
+    "name": "学长回乡",
+    "text": "陈默学长家里有急事，回了趟老家，他 图书馆的考研摊位和一摞资料没人看管。",
+    "conditions": [
+      { "type": "locationIs", "location": "library" },
+      { "type": "affinityMin", "npc": "senior", "value": 20 }
+    ],
+    "choices": [
+      {
+        "text": "帮他看着考研摊位",
+        "effects": [{ "type": "affinity", "npc": "senior", "delta": 8 }]
+      },
+      { "text": "自顾不暇", "effects": [] }
+    ]
+  },
+  {
     "id": "blackout", "type": "random", "weight": 8, "cooldown": 3,
     "name": "停电夜",
     "text": "整栋宿舍楼突然黑了——电路检修。黑暗里此起彼伏地响起『我手机还剩 3%』的哀嚎，充电宝一夜之间成了硬通货。",

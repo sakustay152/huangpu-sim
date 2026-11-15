@@ -47,11 +47,11 @@ ActionOutcome Session::runAction(GameContext& ctx, const ICommand& cmd) {
         }
     }
 
-    // ---- 跨天（睡觉/昏迷推进）：行情按天刷新 ----
+    // ---- 跨天（睡觉/昏迷推进）：天气 roll + 行情按天刷新 ----
+    // 昏迷路径已在 handleFaintAndAdvance 内处理 handleNewDay，避免重复
     if (ctx.time->day() != dayBefore || ctx.time->week() != weekBefore) dayChanged = true;
-    if (dayChanged) {
-        ITimeListener& marketListener = *ctx.market;
-        marketListener.onDayTick(); // 限购/噪声按天刷新
+    if (dayChanged && !out.fainted) {
+        ctx.handleNewDay();
     }
     if (ctx.time->week() != weekBefore) out.weekAdvanced = true;
 

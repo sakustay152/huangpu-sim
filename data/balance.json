@@ -41,6 +41,7 @@
   "studyHours": 2,
   "socialStamina": 5,
   "socialHours": 2,
+  "affinityDecay": 2,
   "workHours": 8,
   "tradeHours": 1,
   "learnStockHours": 2,
@@ -49,6 +50,10 @@
   "sleepFullHours": 8,
   "insomniaChance": 0.10,
   "insomniaPenaltyHours": 2,
+
+  "rainChance": 0.30,
+  "rainMoveStaminaExtra": 3,
+  "umbrellaRainFactor": 1.5,
   "faintHospitalFee": 50,
   "faintMaxStaminaLoss": 15,
 
@@ -73,6 +78,7 @@
   "learnStockStaminaCost": 30,
   "learnStockGainMin": 6,
   "learnStockGainMax": 10,
+  "caffeineStamina": 15,
   "stockBarsKeep": 60,
   "stockIntraSteps": 6,
 

@@ -21,6 +21,21 @@ void NpcSystem::addAffinity(const std::string& npcId, int delta) {
     if (v > 100) v = 100;
 }
 
+void NpcSystem::markSocial(const std::string& npcId, int week) {
+    lastSocialWeek_[npcId] = week;
+}
+
+void NpcSystem::applyWeeklyDecay(int decay, int settledWeek) {
+    if (decay <= 0) return;
+    for (auto& [id, v] : affinity_) {
+        auto it = lastSocialWeek_.find(id);
+        // 本周（settledWeek）没与该 NPC 社交过 → 好感自然衰减
+        if (it == lastSocialWeek_.end() || it->second < settledWeek) {
+            v = std::max(0, v - decay);
+        }
+    }
+}
+
 int NpcSystem::maxAffinity() const {
     int best = 0;
     for (const auto& [id, v] : affinity_) best = std::max(best, v);
@@ -30,7 +45,9 @@ int NpcSystem::maxAffinity() const {
 Json NpcSystem::toJson() const {
     Json obj = Json::object();
     for (const auto& [id, v] : affinity_) obj[id] = v;
-    return Json{{"affinity", obj}};
+    Json social = Json::object();
+    for (const auto& [id, w] : lastSocialWeek_) social[id] = w;
+    return Json{{"affinity", obj}, {"lastSocialWeek", social}};
 }
 
 void NpcSystem::fromJson(const Json& j) {
@@ -38,4 +55,8 @@ void NpcSystem::fromJson(const Json& j) {
     for (auto it = j["affinity"].begin(); it != j["affinity"].end(); ++it) {
         if (affinity_.count(it.key())) affinity_[it.key()] = it.value().get<int>();
     }
+    lastSocialWeek_.clear();
+    if (j.contains("lastSocialWeek") && j["lastSocialWeek"].is_object())
+        for (auto it = j["lastSocialWeek"].begin(); it != j["lastSocialWeek"].end(); ++it)
+            if (affinity_.count(it.key())) lastSocialWeek_[it.key()] = it.value().get<int>();
 }

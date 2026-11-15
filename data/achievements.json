@@ -1,0 +1,46 @@
+{
+  // ============================================================
+  // 成就系统：conditions 复用 ConditionFactory（与事件/结局同一套体系）
+  // 首次满足 → flag ach_<id> + 反馈提示；成就屏列出全部（解锁 ✔ / 未解锁 ？）
+  // ============================================================
+
+  "first_gold": {
+    "name": "第一桶金",
+    "desc": "总资产首次达到 ¥8,000",
+    "conditions": [{ "type": "totalAssetsMin", "value": 8000 }]
+  },
+
+  "stock_star": {
+    "name": "股坛新星",
+    "desc": "股力提升到 50",
+    "conditions": [{ "type": "stockSkillAtLeast", "value": 50 }]
+  },
+
+  "social_butterfly": {
+    "name": "社交达人",
+    "desc": "室友/学长/学姐 好感全部达到 30",
+    "conditions": [
+      { "type": "affinityMin", "npc": "roommate", "value": 30 },
+      { "type": "affinityMin", "npc": "senior", "value": 30 },
+      { "type": "affinityMin", "npc": "xuejie", "value": 30 }
+    ]
+  },
+
+  "lever_survivor": {
+    "name": "杠杆幸存者",
+    "desc": "使用过杠杆且没有走到破产结局",
+    "conditions": [{ "type": "hasFlag", "flag": "lever_used" }]
+  },
+
+  "bookworm": {
+    "name": "图书馆钉子户",
+    "desc": "平时分达到 85",
+    "conditions": [{ "type": "studyAtLeast", "value": 85 }]
+  },
+
+  "tycoon": {
+    "name": "校园富豪",
+    "desc": "总资产达到 ¥100,000",
+    "conditions": [{ "type": "totalAssetsMin", "value": 100000 }]
+  }
+}

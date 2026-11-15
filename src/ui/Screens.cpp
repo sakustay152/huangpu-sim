@@ -68,6 +68,7 @@ void CampusScreen::draw() {
     const LocationDef* loc = c->config.location(c->locationId);
     header("第 " + std::to_string(c->time->week()) + " 周 · " + c->time->dayName() +
            " · " + c->time->clockText() +
+           " · 天气 " + std::string(c->time->weatherName()) +
            " · 体力 " + std::to_string(c->player->energy().get()) + "/" +
            std::to_string(c->player->energy().max()));
     line("现金 " + console::paint(money(c->player->wallet().get()), console::GREEN) +
@@ -106,6 +107,7 @@ void CampusScreen::handleInput(const std::string& in) {
     else if (cmd == "0") game_.screens().push(std::make_unique<SaveLoadScreen>(game_, false));
     else if (cmd == "x") game_.screens().push(std::make_unique<StockScreen>(game_));
     else if (cmd == "z") game_.debugJumpToEnding(); // 临时调试
+    else if (cmd == "a") game_.screens().push(std::make_unique<AchievementsScreen>(game_));
     else if (cmd == "h") game_.screens().push(std::make_unique<HelpScreen>(game_));
     else if (cmd == "q") game_.backToTitle();
 }
@@ -381,7 +383,7 @@ void StockScreen::onEnter() {
             if (!changed) continue; // 点在空白处不重绘
         } else if (ev.has) { // 键盘
             if (ev.key == 'q' || ev.key == 27) running = false;
-            else if (ev.key >= '1' && ev.key <= '6') {
+            else if (ev.key >= '1' && ev.key <= '7') {
                 int idx = ev.key - '1';
                 if (idx < static_cast<int>(buttons_.size())) {
                     buttons_[static_cast<std::size_t>(idx)].action();
@@ -496,9 +498,11 @@ void StockScreen::draw() {
          [this] { clickCycleLeverage(); }},
         {"[6:学股市知识 -" + std::to_string(c->config.balance().learnStockStaminaCost) + "体力]",
          [this] { clickLearn(); }},
+        {"[7:咖啡提神 +" + std::to_string(c->config.balance().caffeineStamina) + "体力]",
+         [this] { clickCaffeine(); }},
         {"[q:返回]", [this] {}},
     });
-    line(console::paint("鼠标点击按钮或按快捷键 1-6；ESC/q 返回（K 线随每次行动与周日结算刷新）",
+    line(console::paint("鼠标点击按钮或按快捷键 1-7；ESC/q 返回（K 线随每次行动与周日结算刷新）",
                         console::DIM));
 }
 
@@ -550,6 +554,16 @@ void StockScreen::clickLearn() {
     // 学股市知识 = 2 小时 + 30 体力；昏迷/周结算由 Session/Game 统一处理
 }
 
+// 咖啡提神：消耗 1 张咖啡券回体力，不耗时间；成就检测照走
+void StockScreen::clickCaffeine() {
+    GameContext* c = game_.ctx();
+    if (!c) return;
+    ActionOutcome out = Session::runAction(*c, CaffeineCommand());
+    feedback_ = out.result.msg;
+    for (const auto& name : c->checkAchievements())
+        feedback_ += "\n🏆 成就解锁：" + name;
+}
+
 void StockScreen::handleInput(const std::string& in) {
     // 键盘回退模式（输入被重定向时）；交互模式由 onEnter 内循环处理
     GameContext* c = game_.ctx();
@@ -587,7 +601,11 @@ void StockScreen::handleInput(const std::string& in) {
         clickLearn(); // 学股市知识 = 2 小时 + 30 体力；昏迷/周结算由 Session/Game 统一处理
         return;
     }
-    feedback_ = "命令：b <金额|all> / s all / l 切杠杆 / learn 学股市知识 / q 返回";
+    if (tokens[0] == "coffee") {
+        clickCaffeine(); // 咖啡提神 = -1 咖啡券 +15 体力，不耗时间
+        return;
+    }
+    feedback_ = "命令：b <金额|all> / s all / l 切杠杆 / learn 学股市知识 / coffee 咖啡提神 / q 返回";
 }
 
 // ================= 社交（v2：选项池三选一） =================
@@ -617,6 +635,9 @@ void SocialScreen::onEnter() {
         int j = static_cast<int>(c->rng.next() % static_cast<std::uint64_t>(i + 1));
         std::swap(options_[static_cast<std::size_t>(i)], options_[static_cast<std::size_t>(j)]);
     }
+    // 专属赠礼：背包有对应商品时展示送礼入口（R3）
+    hasGift_ = !pool->giftGoods.empty() &&
+               c->player->inventory().find(pool->giftGoods) != nullptr;
 }
 
 void SocialScreen::draw() {
@@ -633,10 +654,16 @@ void SocialScreen::draw() {
             ++idx;
         }
     }
+    if (hasGift_) {
+        const SocialPoolDef* pool = c->config.socialPool(npcId_);
+        const GoodsDef* g = c->config.goods(pool->giftGoods);
+        if (g) line("[4] 送「" + g->name + "」（好感 +" +
+                        std::to_string(pool->giftAffinity) + " · 1 小时）");
+    }
     rule();
     line(console::paint(feedback_.empty() ? "输入选项编号执行（每次 2 小时）；[q] 返回" : feedback_,
                         console::CYAN));
-    if (options_.empty()) line("[q] 返回");
+    if (options_.empty() && !hasGift_) line("[q] 返回");
 }
 
 void SocialScreen::handleInput(const std::string& in) {
@@ -647,12 +674,18 @@ void SocialScreen::handleInput(const std::string& in) {
         game_.screens().pop();
         return;
     }
-    if (cmd != "1" && cmd != "2" && cmd != "3") return;
+    if (cmd != "1" && cmd != "2" && cmd != "3" && cmd != "4") return;
     int pick = cmd[0] - '1';
-    if (pick < 0 || pick >= static_cast<int>(options_.size())) return;
-    const SocialOption& opt = options_[static_cast<std::size_t>(pick)];
-    game_.performAction(std::make_unique<SocialPickCommand>(npcId_, opt.text, opt.delta));
-    game_.screens().pop(); // 执行结果显示在校园屏 lastFeedback 上
+    if (pick >= 0 && pick < static_cast<int>(options_.size())) {
+        const SocialOption& opt = options_[static_cast<std::size_t>(pick)];
+        game_.performAction(std::make_unique<SocialPickCommand>(npcId_, opt.text, opt.delta));
+        game_.screens().pop(); // 执行结果显示在校园屏 lastFeedback 上
+        return;
+    }
+    if (cmd == "4" && hasGift_) {
+        game_.performAction(std::make_unique<GiftCommand>(npcId_));
+        game_.screens().pop();
+    }
 }
 
 // ================= 事件对话框 =================
@@ -723,7 +756,7 @@ void SaveLoadScreen::draw() {
     }
     rule();
     if (!feedback_.empty()) line(console::paint(feedback_, console::CYAN));
-    line("[0-3] 选择槽位    [q] 返回");
+    line("[0-5] 选择槽位    [q] 返回");
 }
 
 void SaveLoadScreen::handleInput(const std::string& in) {
@@ -732,7 +765,7 @@ void SaveLoadScreen::handleInput(const std::string& in) {
         game_.screens().pop();
         return;
     }
-    if (cmd.size() != 1 || cmd[0] < '0' || cmd[0] > '3') return;
+    if (cmd.size() != 1 || cmd[0] < '0' || cmd[0] > '5') return;
     int slot = cmd[0] - '0';
     std::string err;
     if (saveMode_) {
@@ -798,6 +831,32 @@ void EndingScreen::handleInput(const std::string& in) {
         return;
     }
     game_.backToTitle();
+}
+
+// ================= 成就 =================
+
+void AchievementsScreen::draw() {
+    GameContext* c = game_.ctx();
+    if (!c) return;
+    header("成就（已解锁 " +
+           std::to_string(c->config.achievements().size() - [&] {
+               int n = 0;
+               for (const auto& a : c->config.achievements())
+                   if (!c->flags->has("ach_" + a.id)) ++n;
+               return n;
+           }()) + "/" + std::to_string(c->config.achievements().size()) + "）");
+    for (const auto& a : c->config.achievements()) {
+        bool got = c->flags->has("ach_" + a.id);
+        line(std::string(got ? "✔ " : "？ ") + console::paint(a.name, got ? console::YELLOW : console::DIM) +
+             "——" + a.desc);
+    }
+    rule();
+    line("[任意键] 返回");
+}
+
+void AchievementsScreen::handleInput(const std::string& in) {
+    (void)in;
+    game_.screens().pop();
 }
 
 // ================= 帮助 =================

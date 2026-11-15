@@ -10,6 +10,7 @@
 #include "events/EventScheduler.h"
 #include "player/Player.h"
 #include "player/StudySystem.h"
+#include "story/NpcSystem.h"
 #include "story/StoryFlags.h"
 #include "stock/StockSystem.h"
 #include "time/TimeSystem.h"
@@ -96,6 +97,9 @@ void WeekSettlement::settleStocks() {
 }
 
 void WeekSettlement::settleEnergy() {
+    // 好感自然衰减：本周没互动的 NPC 好感 -N（v2 社交维系压力）
+    ctx_.npcs->applyWeeklyDecay(ctx_.config.balance().affinityDecay,
+                                ctx_.time->settledWeek());
     // 本周时间利用统计（v2 时间系统的周报亮点）
     const auto& wh = ctx_.time->weeklyHours();
     if (!wh.empty()) {

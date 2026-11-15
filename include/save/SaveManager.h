@@ -1,7 +1,7 @@
 #pragma once
 // ============================================================
 // [save/SaveManager] 存档管理（组长 A 维护）
-// 分工 7.2：3 个手动槽位 + 自动存档（每周日）；JSON；版本号；
+// 分工 7.2：5 个手动槽位 + 自动存档（每周日）；JSON；版本号；
 // 原子写入（先写 .tmp 再替换）；坏档返回错误信息不崩溃。
 // ============================================================
 #include <string>
@@ -12,7 +12,7 @@
 class SaveManager {
 public:
     static constexpr int kAutoSlot = 0;
-    static constexpr int kManualSlots = 3; // 1..3
+    static constexpr int kManualSlots = 5; // 1..5
 
     explicit SaveManager(std::string dir) : dir_(std::move(dir)) {}
 

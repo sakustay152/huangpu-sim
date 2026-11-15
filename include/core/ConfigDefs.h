@@ -32,6 +32,7 @@ struct BalanceDef {
     int studyHours = 2;           // 学习耗小时
     int socialStamina = 5;        // 社交耗体力
     int socialHours = 2;          // 社交耗小时
+    int affinityDecay = 2;        // 本周未社交的 NPC 好感自然衰减
     int workHours = 8;            // 一次打工班次（8 小时）
     int tradeHours = 1;           // 商品买卖一趟市场耗小时
     int learnStockHours = 2;      // 学股市知识耗小时
@@ -39,7 +40,11 @@ struct BalanceDef {
     double insomniaChance = 0.10; // 睡觉失眠概率（等效睡眠时间 -2 小时）
     int insomniaPenaltyHours = 2;
     int faintHospitalFee = 50;    // 昏迷送校医院的诊疗费
-    int faintMaxStaminaLoss = 10; // 昏迷扣除的体力上限（周结算恢复）
+    int faintMaxStaminaLoss = 15; // 昏迷扣除的体力上限（周结算恢复）
+    // ---- 天气（v2：每天 roll，雨天更累、雨伞走俏） ----
+    double rainChance = 0.30;         // 每天降雨概率
+    int rainMoveStaminaExtra = 3;     // 雨天移动额外体力
+    double umbrellaRainFactor = 1.5;  // 雨天雨伞价格系数
 
     int studyStart = 40;          // 平时分初始
     int studyGain = 3;            // 每次学习 +（v2：2 小时一节自习）
@@ -89,6 +94,7 @@ struct BalanceDef {
     int learnStockStaminaCost = 30;    // 学股市知识耗体力（大量）
     int learnStockGainMin = 6;         // 每次学到的股力下限
     int learnStockGainMax = 10;        // 每次学到的股力上限
+    int caffeineStamina = 15;          // 咖啡提神恢复的体力（消耗 1 张咖啡券，不耗时间）
     int stockBarsKeep = 60;            // 保留的 K 线条数
     int stockIntraSteps = 6;           // 每根 K 线内部的子步数
     // ---- 体力（所有行动共用；昏迷扣上限，周结算恢复） ----
@@ -125,11 +131,13 @@ struct NpcDef {
     std::string id, name, home, intro;
 };
 
-// ---- social.json：社交选项池（v2 社交三选一） ----
+// ---- social.json：社交选项池（v2 社交三选一）+ 专属赠礼 ----
 struct SocialPoolDef {
     std::vector<std::string> positive; // 好感 +5 的选项池
     std::vector<std::string> neutral;  // 好感不变的选项池
     std::vector<std::string> negative; // 好感 -5 的选项池
+    std::string giftGoods;             // 专属赠礼（商品 id，消耗 1 件换好感）
+    int giftAffinity = 8;              // 送礼好感
 };
 
 // ---- endings.json：结局定义 ----
@@ -137,4 +145,10 @@ struct EndingDef {
     std::string id, title, text;
     int priority = 99;            // 越小越优先判定
     std::vector<Json> conditions; // 条件 JSON（ConditionFactory 解释）
+};
+
+// ---- achievements.json：成就定义（条件复用 ConditionFactory） ----
+struct AchievementDef {
+    std::string id, name, desc;
+    std::vector<Json> conditions; // 首次全部满足 → flag ach_<id>
 };

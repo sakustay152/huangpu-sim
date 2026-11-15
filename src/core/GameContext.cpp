@@ -5,6 +5,7 @@
 #include "core/EventBus.h"
 #include "core/Random.h"
 #include "economy/Market.h"
+#include "events/Condition.h"
 #include "events/EventScheduler.h"
 #include "player/Player.h"
 #include "player/TradeSystem.h"
@@ -59,13 +60,39 @@ bool GameContext::handleFaintAndAdvance(std::string& appendMsg) {
     player->energy().reduceMax(b.faintMaxStaminaLoss);
     const bool weekAdvanced = time->advanceDay();
     locationId = "dorm"; // 被室友抬回宿舍
-    ITimeListener& marketListener = *market;
-    marketListener.onDayTick(); // 新的一天：限购/噪声刷新
+    handleNewDay(); // 新的一天：roll 天气 + 限购/噪声刷新
     appendMsg += "\n【昏迷】凌晨 2 点，你眼前一黑倒在原地……醒来时已躺在校医院"
                  "（诊疗费 -¥" + std::to_string(fee) +
                  "，体力上限 -" + std::to_string(b.faintMaxStaminaLoss) + "）";
     updateBankruptcyFlag();
     return weekAdvanced;
+}
+
+// 新的一天统一入口：roll 天气 + 行情按天刷新
+void GameContext::handleNewDay() {
+    time->setWeather(rng.chance(config.balance().rainChance) ? 1 : 0);
+    ITimeListener& marketListener = *market;
+    marketListener.onDayTick();
+    market->applyWeather(time->weather());
+}
+
+// 成就检测：条件复用 ConditionFactory（与事件/结局同一套体系）
+std::vector<std::string> GameContext::checkAchievements() {
+    std::vector<std::string> newly;
+    for (const auto& a : config.achievements()) {
+        const std::string flag = "ach_" + a.id;
+        if (flags->has(flag)) continue;
+        bool all = true;
+        for (const auto& cj : a.conditions) {
+            auto cond = ConditionFactory::create(cj);
+            if (!cond->test(*this)) { all = false; break; }
+        }
+        if (all) {
+            flags->set(flag);
+            newly.push_back(a.name);
+        }
+    }
+    return newly;
 }
 
 // Observer 接线：交易完成 → 玩家自动记账（订阅方只依赖事件，不依赖发布方）

@@ -53,6 +53,13 @@ public:
     ActionResult execute(GameContext& ctx) const override;
 };
 
+// 咖啡提神（炒股屏快捷动作）：消耗 1 张咖啡券恢复体力，不耗时间
+class CaffeineCommand : public ICommand {
+public:
+    std::string name() const override { return "咖啡提神"; }
+    ActionResult execute(GameContext& ctx) const override;
+};
+
 // 社交：玩家在 SocialScreen 三选一后执行（好感 +5/0/-5 由选项池决定）
 class SocialPickCommand : public ICommand {
 public:
@@ -64,4 +71,14 @@ private:
     std::string npcId_;
     std::string text_;
     int delta_;
+};
+
+// 送礼：消耗 NPC 的专属赠礼商品 1 件（1 小时 + 3 体力，好感 +giftAffinity）
+class GiftCommand : public ICommand {
+public:
+    GiftCommand(std::string npcId) : npcId_(std::move(npcId)) {}
+    std::string name() const override { return "送礼"; }
+    ActionResult execute(GameContext& ctx) const override;
+private:
+    std::string npcId_;
 };

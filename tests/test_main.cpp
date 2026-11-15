@@ -30,6 +30,7 @@
 #include "player/StudySystem.h"
 #include "player/TradeError.h"
 #include "player/TradeSystem.h"
+#include "save/SaveManager.h"
 #include "simulate/SimulationRunner.h"
 #include "stock/StockSystem.h"
 #include "story/NpcSystem.h"
@@ -642,6 +643,136 @@ int main(int argc, char** argv) {
             const Inventory::Item* item = e.player->inventory().find("umbrella");
             check(item && item->qty == 1 && item->slotsPer == 1,
                   "事件给物品走 inventory().add");
+        }
+
+        // ---------- 19. A 模块：v1.1.1 优化批次（衰减/天气/送礼/特惠/咖啡/成就/存档槽） ----------
+        std::cout << "\n== A 模块：v1.1.1 优化批次 ==\n";
+        {
+            // 19.1 好感度自然衰减：本周社交过的不衰减，没社交的衰减
+            {
+                GameContext d(cfg, rng, bus);
+                d.initNewGame();
+                d.npcs->addAffinity("roommate", 50);
+                d.npcs->addAffinity("senior", 50);
+                d.npcs->markSocial("roommate", 1);
+                d.npcs->applyWeeklyDecay(cfg.balance().affinityDecay, 1);
+                check(d.npcs->affinity("roommate") == 50, "本周社交过 → 好感不衰减");
+                check(d.npcs->affinity("senior") == 50 - cfg.balance().affinityDecay,
+                      "本周未社交 → 好感自然衰减");
+                Json dj = d.npcs->toJson();
+                NpcSystem d2(cfg);
+                d2.fromJson(dj);
+                check(d2.affinity("senior") == 50 - cfg.balance().affinityDecay,
+                      "好感 + lastSocialWeek 序列化往返");
+            }
+
+            // 19.2 天气：切换/文案/序列化 + 雨天雨伞涨价
+            {
+                GameContext d(cfg, rng, bus);
+                d.initNewGame();
+                d.time->setWeather(1);
+                check(d.time->weather() == 1 && std::string(d.time->weatherName()) == "雨",
+                      "天气切换 + 文案");
+                Json tj = d.time->toJson();
+                TimeSystem t2(cfg);
+                t2.fromJson(tj);
+                check(t2.weather() == 1, "天气随存档走");
+                d.market->applyWeather(0);
+                int dry = d.market->buyPrice("store", "umbrella");
+                d.market->applyWeather(1);
+                int wet = d.market->buyPrice("store", "umbrella");
+                check(wet > dry, "雨天雨伞买价上浮");
+            }
+
+            // 19.3 送礼：专属赠礼出包 + 好感提升；无赠礼拒绝
+            {
+                GameContext g2(cfg, rng, bus);
+                g2.initNewGame(); // 初始在宿舍 → 室友
+                g2.player->inventory().add("snack_box", 1, 0.0, 1);
+                const int affBefore = g2.npcs->affinity("roommate");
+                ActionResult gr = GiftCommand("roommate").execute(g2);
+                check(gr.ok, "送礼成功（宿舍 + 零食箱）");
+                check(g2.npcs->affinity("roommate") == std::min(100, affBefore + 8),
+                      "送礼好感 +giftAffinity");
+                check(g2.player->inventory().find("snack_box") == nullptr, "赠礼出包");
+                ActionResult gr2 = GiftCommand("roommate").execute(g2);
+                check(!gr2.ok, "背包无赠礼 → 拒绝送礼");
+            }
+
+            // 19.4 每日特惠：onDayTick 摇出组合 + 存档契约 + 75 折生效
+            {
+                GameContext s1(cfg, rng, bus);
+                s1.initNewGame();
+                s1.market->onDayTick(); // 每日重摇（含每日特惠）
+                check(s1.market->hasSpecial(), "每日特惠已摇出");
+                Json mj = s1.market->toJson();
+                // 用公开 JSON 契约把特惠固定为 store×umbrella，隔离噪声验证折扣
+                mj["specialGoods"] = "umbrella";
+                mj["specialLoc"] = "store";
+                Market m2(cfg, rng);
+                m2.fromJson(mj);
+                check(m2.isSpecial("store", "umbrella"), "特惠组合随存档走");
+                const int disc = m2.buyPrice("store", "umbrella");
+                mj["specialGoods"] = "";
+                mj["specialLoc"] = "";
+                m2.fromJson(mj);
+                const int full = m2.buyPrice("store", "umbrella");
+                check(disc < full && disc <= full * 3 / 4 + 1, "特惠组合买价 = 75 折");
+                check(!m2.hasSpecial() || m2.specialGoods().empty(), "清空后无特惠");
+            }
+
+            // 19.5 咖啡提神：-1 咖啡券 +N 体力，不耗时间；边界拒绝
+            {
+                GameContext cf(cfg, rng, bus);
+                cf.initNewGame();
+                cf.player->inventory().add("coffee_ticket", 2, 0.0, 1);
+                cf.player->energy().spend(40);
+                const int eBefore = cf.player->energy().get();
+                const int hourBefore = cf.time->hour();
+                ActionResult cr = CaffeineCommand().execute(cf);
+                check(cr.ok, "咖啡提神成功");
+                check(cf.player->energy().get() ==
+                          std::min(cf.player->energy().max(),
+                                   eBefore + cfg.balance().caffeineStamina),
+                      "体力恢复 caffeineStamina 点（封顶上限）");
+                check(cf.time->hour() == hourBefore, "喝咖啡不耗时间");
+                check(cf.player->inventory().find("coffee_ticket")->qty == 1, "咖啡券 -1");
+                cf.player->energy().add(100); // 回满（add 自动封顶）
+                check(!CaffeineCommand().execute(cf).ok, "满体力喝咖啡 → 拒绝");
+                cf.player->energy().spend(40);
+                cf.player->inventory().remove("coffee_ticket", 1);
+                check(!CaffeineCommand().execute(cf).ok, "无咖啡券 → 拒绝");
+            }
+
+            // 19.6 成就：达标解锁 + flag 防重复
+            {
+                GameContext a1(cfg, rng, bus);
+                a1.initNewGame();
+                check(a1.checkAchievements().empty(), "初始状态无成就解锁");
+                a1.player->wallet().add(6000); // 3000+6000=9000 ≥ first_gold 的 8000
+                auto newly = a1.checkAchievements();
+                check(newly.size() == 1, "现金达标 → 解锁 1 个成就");
+                check(a1.flags->has("ach_first_gold"), "成就 flag 已写入");
+                check(a1.checkAchievements().empty(), "同一次达不重复解锁");
+            }
+
+            // 19.7 存档槽 3→5：槽 5 可存可读，槽位列表完整
+            {
+                check(SaveManager::kManualSlots == 5, "手动槽位扩到 5");
+                namespace fs = std::filesystem;
+                const fs::path tmp = fs::temp_directory_path() / "huangpu_slot5_test";
+                std::filesystem::remove_all(tmp); // 干净起步
+                SaveManager sm(tmp.string());
+                Json data = Json{{"version", 1}, {"meta", Json{{"week", 3}}}};
+                std::string err;
+                check(sm.save(5, data, &err), "槽 5 保存成功");
+                Json back = sm.load(5, &err);
+                check(!back.is_null() && back["meta"]["week"] == 3, "槽 5 读回一致");
+                check(static_cast<int>(sm.listSlots().size()) ==
+                          SaveManager::kManualSlots + 1,
+                      "槽位列表 = 自动档 + 5 手动槽");
+                fs::remove_all(tmp);
+            }
         }
 
     } catch (const std::exception& e) {

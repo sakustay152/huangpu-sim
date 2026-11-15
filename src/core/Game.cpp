@@ -122,6 +122,9 @@ void Game::performAction(std::unique_ptr<ICommand> cmd) {
     c->lastFeedback = out.result.msg;
     if (out.event) queueEventDialog(out.event);
     checkBankruptcy(); // 行动中的股价波动可能触发爆仓欠债
+    // 成就检测：新解锁追加到反馈行
+    for (const auto& name : c->checkAchievements())
+        c->lastFeedback += "\n🏆 成就解锁：" + name;
     // 跨越周日 → 自动进入周结算
     if (out.weekAdvanced && !c->time->isSemesterOver()) {
         requestEndWeek();
@@ -161,8 +164,7 @@ void Game::finishWeekNow() {
     while (true) {
         const bool weekRolled = c->time->advanceDay();
         c->player->energy().restoreFull(); // 睡满一整天
-        ITimeListener& marketListener = *c->market;
-        marketListener.onDayTick();
+        c->handleNewDay();
         c->stock->onTick(*c); // 跳过的天 K 线也照走
         if (weekRolled || c->time->isSemesterOver()) break;
     }

@@ -17,9 +17,14 @@ ActionResult MoveCommand::execute(GameContext& ctx) const {
     const LocationDef* to = ctx.config.location(to_);
     if (!to) return {false, false, "没有这个地方: " + to_};
     if (to->id == ctx.locationId) return {false, false, "你已经在这里了"};
-    if (!ctx.player->energy().spend(b.moveStamina))
+    if (!ctx.player->energy().spend(b.moveStamina +
+                                        (ctx.time->weather() == 1 ? b.rainMoveStaminaExtra : 0)))
         return {false, false, "体力不支，走不动了……（移动需要 " +
-                                  std::to_string(b.moveStamina) + " 点体力，回宿舍睡一觉）"};
+                                  std::to_string(b.moveStamina +
+                                                 (ctx.time->weather() == 1 ? b.rainMoveStaminaExtra : 0)) +
+                                  " 点体力" +
+                                  (ctx.time->weather() == 1 ? "，雨天路滑更费劲" : "") +
+                                  "，回宿舍睡一觉）"};
     ctx.time->spendHours(b.moveHours, "移动");
     ctx.locationId = to->id;
     return {true, true, "移动到【" + to->name + "】（体力 -" + std::to_string(b.moveStamina) +
@@ -99,6 +104,24 @@ ActionResult LearnStockCommand::execute(GameContext& ctx) const {
     return {true, true, msg};
 }
 
+ActionResult CaffeineCommand::execute(GameContext& ctx) const {
+    const BalanceDef& b = ctx.config.balance();
+    const GoodsDef* g = ctx.config.goods("coffee_ticket");
+    if (!g) return {false, false, "（咖啡券商品未定义）"};
+    const Inventory::Item* item = ctx.player->inventory().find("coffee_ticket");
+    if (!item) return {false, false, "背包里没有「" + g->name + "」……学长处可购入。"};
+    if (ctx.player->energy().get() >= ctx.player->energy().max())
+        return {false, false, "精神得很，喝咖啡纯属浪费。"};
+    ctx.player->inventory().remove("coffee_ticket", 1);
+    int before = ctx.player->energy().get();
+    ctx.player->energy().add(b.caffeineStamina);
+    int after = ctx.player->energy().get();
+    return {true, true, "灌下一杯咖啡（-1「" + g->name + "」），体力 +" +
+                            std::to_string(after - before) + "（" +
+                            std::to_string(before) + "→" + std::to_string(after) +
+                            "），继续盯盘！"};
+}
+
 ActionResult SocialPickCommand::execute(GameContext& ctx) const {
     const BalanceDef& b = ctx.config.balance();
     const LocationDef* loc = ctx.config.location(ctx.locationId);
@@ -110,6 +133,7 @@ ActionResult SocialPickCommand::execute(GameContext& ctx) const {
         return {false, false, "体力不支，提不起劲聊天……（社交需要 " +
                                   std::to_string(b.socialStamina) + " 点体力）"};
     ctx.time->spendHours(b.socialHours, "社交");
+    ctx.npcs->markSocial(npcId_, ctx.time->week());
     int before = ctx.npcs->affinity(npcId_);
     ctx.npcs->addAffinity(npcId_, delta_);
     int after = ctx.npcs->affinity(npcId_);
@@ -127,4 +151,31 @@ ActionResult SocialPickCommand::execute(GameContext& ctx) const {
         }
     }
     return {true, true, msg};
+}
+
+ActionResult GiftCommand::execute(GameContext& ctx) const {
+    const BalanceDef& b = ctx.config.balance();
+    const LocationDef* loc = ctx.config.location(ctx.locationId);
+    if (!loc || loc->npcId.empty() || loc->npcId != npcId_)
+        return {false, false, "对方已经不在这里了"};
+    const NpcDef* n = ctx.config.npc(npcId_);
+    const SocialPoolDef* pool = ctx.config.socialPool(npcId_);
+    if (!n || !pool || pool->giftGoods.empty())
+        return {false, false, "（这位 NPC 没有专属赠礼设定）"};
+    const GoodsDef* g = ctx.config.goods(pool->giftGoods);
+    if (!g) return {false, false, "（赠礼商品无效）"};
+    const Inventory::Item* item = ctx.player->inventory().find(pool->giftGoods);
+    if (!item) return {false, false, "背包里没有「" + g->name + "」可以送……"};
+
+    if (!ctx.player->energy().spend(3))
+        return {false, false, "体力不支……（送礼需要 3 点体力）"};
+    ctx.time->spendHours(1, "送礼");
+    ctx.player->inventory().remove(pool->giftGoods, 1);
+    int before = ctx.npcs->affinity(npcId_);
+    ctx.npcs->addAffinity(npcId_, pool->giftAffinity);
+    int after = ctx.npcs->affinity(npcId_);
+    ctx.npcs->markSocial(npcId_, ctx.time->week());
+    return {true, true, "把「" + g->name + "」送给了" + n->name + "——好感 +" +
+                            std::to_string(pool->giftAffinity) +
+                            "（" + std::to_string(before) + "→" + std::to_string(after) + "）"};
 }

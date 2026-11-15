@@ -69,6 +69,14 @@ public:
     // 行情按天刷新、位置回宿舍。返回 true = 跨越了周日（调用方需周结算）。
     bool handleFaintAndAdvance(std::string& appendMsg);
 
+    // ---- 新的一天（v2 统一入口） ----
+    // roll 天气 + 行情按天刷新（限购/噪声）。任何跨天路径都必须调用。
+    void handleNewDay();
+
+    // ---- 成就检测（v2） ----
+    // 遍历未解锁成就，条件全过 → 置 flag；返回本次新解锁的成就名（供反馈）
+    std::vector<std::string> checkAchievements();
+
 private:
     void wireSubscriptions(); // EventBus 订阅（Observer 模式的接线处）
     std::vector<std::uint64_t> subscriptionIds_; // 析构时逐个退订，避免悬垂捕获

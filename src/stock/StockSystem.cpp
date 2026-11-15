@@ -136,6 +136,7 @@ TradeResult StockSystem::buy(GameContext& ctx, int yuan) {
                            " 点体力，回宿舍休息恢复）", 0};
 
     int lev = leverage();
+    if (lev >= 2) ctx.flags->set("lever_used"); // 成就：杠杆幸存者
     int sharesNew = static_cast<int>(std::floor(static_cast<double>(yuan) * lev / price_));
     if (sharesNew <= 0)
         return {false, "金额太小，买不起一手（现价 ¥" + fmtPrice(price_) + "）", 0};

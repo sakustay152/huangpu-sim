@@ -12,6 +12,7 @@ ConfigManager::ConfigManager(const std::string& dataDir) : dataDir_(dataDir) {
     loadEndings();
     loadEvents();
     loadSocialPools();
+    loadAchievements();
 
     // ---- 交叉校验：引用完整性 ----
     for (const auto& g : goods_) {
@@ -106,6 +107,7 @@ void ConfigManager::loadBalance() {
     balance_.learnStockStaminaCost = ju::getOr(j, "learnStockStaminaCost", 30);
     balance_.learnStockGainMin   = ju::getOr(j, "learnStockGainMin", 6);
     balance_.learnStockGainMax   = ju::getOr(j, "learnStockGainMax", 10);
+    balance_.caffeineStamina     = ju::getOr(j, "caffeineStamina", 15);
     balance_.stockBarsKeep       = ju::getOr(j, "stockBarsKeep", 60);
     balance_.stockIntraSteps     = ju::getOr(j, "stockIntraSteps", 6);
 
@@ -123,6 +125,7 @@ void ConfigManager::loadBalance() {
     balance_.studyHours         = ju::getOr(j, "studyHours", 2);
     balance_.socialStamina      = ju::getOr(j, "socialStamina", 5);
     balance_.socialHours        = ju::getOr(j, "socialHours", 2);
+    balance_.affinityDecay      = ju::getOr(j, "affinityDecay", 2);
     balance_.workHours          = ju::getOr(j, "workHours", 8);
     balance_.tradeHours         = ju::getOr(j, "tradeHours", 1);
     balance_.learnStockHours    = ju::getOr(j, "learnStockHours", 2);
@@ -130,7 +133,12 @@ void ConfigManager::loadBalance() {
     balance_.insomniaChance     = ju::getOr(j, "insomniaChance", 0.10);
     balance_.insomniaPenaltyHours = ju::getOr(j, "insomniaPenaltyHours", 2);
     balance_.faintHospitalFee     = ju::getOr(j, "faintHospitalFee", 50);
-    balance_.faintMaxStaminaLoss  = ju::getOr(j, "faintMaxStaminaLoss", 10);
+    balance_.faintMaxStaminaLoss  = ju::getOr(j, "faintMaxStaminaLoss", 15);
+
+    // 天气（v2）
+    balance_.rainChance           = ju::getOr(j, "rainChance", 0.30);
+    balance_.rainMoveStaminaExtra = ju::getOr(j, "rainMoveStaminaExtra", 3);
+    balance_.umbrellaRainFactor   = ju::getOr(j, "umbrellaRainFactor", 1.5);
 
     if (j.contains("jobs") && j["jobs"].is_object()) {
         for (auto it = j["jobs"].begin(); it != j["jobs"].end(); ++it) {
@@ -238,6 +246,10 @@ void ConfigManager::loadSocialPools() {
             for (const auto& e : p["neutral"]) pool.neutral.push_back(e.get<std::string>());
         if (p.contains("negative") && p["negative"].is_array())
             for (const auto& e : p["negative"]) pool.negative.push_back(e.get<std::string>());
+        if (p.contains("gift") && p["gift"].is_object()) {
+            pool.giftGoods = ju::getOr<std::string>(p["gift"], "goods", "");
+            pool.giftAffinity = ju::getOr(p["gift"], "affinity", 8);
+        }
         socialPools_[it.key()] = std::move(pool);
     }
 }
@@ -245,6 +257,22 @@ void ConfigManager::loadSocialPools() {
 const SocialPoolDef* ConfigManager::socialPool(const std::string& npcId) const {
     auto it = socialPools_.find(npcId);
     return it == socialPools_.end() ? nullptr : &it->second;
+}
+
+void ConfigManager::loadAchievements() {
+    Json j = ju::loadFile(pathOf("achievements.json"));
+    if (!j.is_object()) fail("achievements.json 顶层必须是对象（成就 id → 定义）");
+    for (auto it = j.begin(); it != j.end(); ++it) {
+        AchievementDef a;
+        a.id = it.key();
+        const Json& p = it.value();
+        a.name  = ju::getOr<std::string>(p, "name", a.id);
+        a.desc  = ju::getOr<std::string>(p, "desc", "");
+        if (p.contains("conditions") && p["conditions"].is_array())
+            for (const auto& c : p["conditions"]) a.conditions.push_back(c);
+        if (a.conditions.empty()) fail("成就 " + a.id + " 没有任何条件");
+        achievements_.push_back(std::move(a));
+    }
 }
 
 const GoodsDef* ConfigManager::goods(const std::string& id) const {
