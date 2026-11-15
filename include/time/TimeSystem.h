@@ -9,6 +9,7 @@
 // ============================================================
 #include "core/ISaveable.h"
 #include "util/Json.h"
+#include <map>
 #include <string>
 
 class ConfigManager;
@@ -30,8 +31,13 @@ public:
     bool canAct() const { return hour_ < kCurfewHour && !isSemesterOver(); }
     bool isSemesterOver() const { return week_ > weeks_; }
 
-    // 消耗小时数（可能越过 26 → 调用方随后检查昏迷）
-    void spendHours(int h) { if (h > 0) hour_ += h; }
+    // 消耗小时数（可带用途标签 → 周报"时间利用"统计；越过 26 → 调用方随后检查昏迷）
+    void spendHours(int h, const std::string& tag = std::string()) {
+        if (h > 0) hour_ += h;
+        if (h > 0 && !tag.empty()) weeklyHours_[tag] += h;
+    }
+    const std::map<std::string, int>& weeklyHours() const { return weeklyHours_; }
+    void clearWeeklyHours() { weeklyHours_.clear(); }
 
     // 推进到次日 8:00；跨周日（周日→周一）返回 true → 触发周结算
     bool advanceDay();
@@ -51,4 +57,5 @@ private:
     int hour_ = kWakeHour;
     bool studiedThisWeek_ = false;
     bool lastWeekStudied_ = false;
+    std::map<std::string, int> weeklyHours_; // 本周各用途耗时（周日结算后清零）
 };

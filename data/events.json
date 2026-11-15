@@ -209,6 +209,44 @@
     ]
   },
   {
+    "id": "market_surge", "type": "random", "weight": 8, "cooldown": 4,
+    "name": "游资进场",
+    "text": "盘后突发消息：有游资盯上了校园概念股，讨论区瞬间沸腾。徽章、充电宝和演出门票的讨论热度直线飙升。",
+    "conditions": [
+      { "type": "weekBetween", "min": 3, "max": 16 }
+    ],
+    "choices": [
+      {
+        "text": "连夜挂单跟风",
+        "effects": [
+          { "type": "priceShock", "goods": "badge", "mult": 1.3, "days": 3 },
+          { "type": "priceShock", "goods": "powerbank", "mult": 1.25, "days": 3 },
+          { "type": "priceShock", "goods": "show_ticket", "mult": 1.3, "days": 3 }
+        ]
+      },
+      { "text": "游资套路深，不跟", "effects": [] }
+    ]
+  },
+  {
+    "id": "market_panic", "type": "random", "weight": 8, "cooldown": 4,
+    "name": "散户踩踏",
+    "text": "一篇《校园倒卖暴雷实录》在讨论区置顶，恐慌情绪蔓延，持币的人争相甩卖日常物资。",
+    "conditions": [
+      { "type": "weekBetween", "min": 3, "max": 16 }
+    ],
+    "choices": [
+      {
+        "text": "趁机低价扫货",
+        "effects": [
+          { "type": "priceShock", "goods": "coffee_ticket", "mult": 0.75, "days": 3 },
+          { "type": "priceShock", "goods": "cable", "mult": 0.7, "days": 3 },
+          { "type": "priceShock", "goods": "snack_box", "mult": 0.75, "days": 3 }
+        ]
+      },
+      { "text": "关掉软件，眼不见心不烦", "effects": [] }
+    ]
+  },
+  {
     "id": "blackout", "type": "random", "weight": 8, "cooldown": 3,
     "name": "停电夜",
     "text": "整栋宿舍楼突然黑了——电路检修。黑暗里此起彼伏地响起『我手机还剩 3%』的哀嚎，充电宝一夜之间成了硬通货。",

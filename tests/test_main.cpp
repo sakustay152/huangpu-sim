@@ -166,6 +166,8 @@ int main(int argc, char** argv) {
         check(ctx.time->hour() == 24, "两次 8 小时班后到 24:00");
         Session::runAction(ctx, WorkCommand()); // 24 → 32 越过凌晨 2 点 → 昏迷
         check(ctx.time->day() == 2 && ctx.time->hour() == 8, "熬过凌晨 2 点昏迷，次日 8:00 醒来");
+        check(ctx.time->weeklyHours().at("打工") == 3 * cfg.balance().workHours,
+              "周小时统计（3 班 × 8h）");
         check(ctx.locationId == "dorm", "昏迷后被送回宿舍");
         check(ctx.player->energy().max() == cfg.balance().staminaMax - cfg.balance().faintMaxStaminaLoss,
               "昏迷扣除体力上限");
@@ -484,10 +486,15 @@ int main(int argc, char** argv) {
             check(f.failedNow && f.retakeFee == b.retakeFee && st4.failed(),
                   "期末 <60 挂科 + 补考费");
 
+            // 考试波动确定性：得分 = clamp(平时分 ± (公式 % 范围), 0, 100)
+            int examVar = ((b.weeks * 13 + (b.passScore - 5) * 7 + 5) % (2 * b.examVarianceRange + 1)) - b.examVarianceRange;
+            check(f.examScore == std::clamp(b.passScore - 5 + examVar, 0, 100),
+                  "期末得分 = 平时分 ± 波动（确定性公式）");
+
             StudySystem st5(cfg);
-            st5.setScore(b.scholarshipScore);
+            st5.setScore(90); // 考试波动 -4 后仍 ≥85
             auto s5 = st5.onWeekEnd(b.weeks, true);
-            check(!s5.failedNow && s5.scholarship == b.scholarship, "期末 ≥85 奖学金");
+            check(!s5.failedNow && s5.scholarship == b.scholarship, "期末考试 ≥85 奖学金");
 
             StudySystem st6(cfg);
             EnergySystem en6(cfg);
@@ -577,7 +584,7 @@ int main(int argc, char** argv) {
                 }
             }
             // 过完第 18 周：期末结算
-            ok.player->study().setScore(90);
+            ok.player->study().setScore(96);
             WeekSettlement::Report rep;
             while (ok.time->week() == b.weeks) {
                 if (ok.time->advanceDay()) {

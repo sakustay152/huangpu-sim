@@ -41,11 +41,18 @@ StudyWeekOutcome StudySystem::onWeekEnd(int week, bool studiedThisWeek) {
     }
     if (week == b.midtermWeek && score_ < b.warnScore) o.midtermWarn = true;
     if (week == b.weeks) {
-        if (score_ < b.passScore) {
+        // 期末考试：得分 = 平时分 ± 考场波动（确定性伪随机，测试可复现；
+        // 对玩家而言不可预测——平时分高也可能失手，低也可能超常发挥）
+        const int range = std::max(1, b.examVarianceRange);
+        const int variance = ((week * 13 + score_ * 7 + (studiedThisWeek ? 5 : 0)) %
+                              (2 * range + 1)) - range;
+        o.examScore = std::clamp(score_ + variance, 0, 100);
+        score_ = o.examScore; // 成绩以考试分为准记入学籍
+        if (o.examScore < b.passScore) {
             failed_ = true;
             o.failedNow = true;
             o.retakeFee = b.retakeFee;
-        } else if (score_ >= b.scholarshipScore) {
+        } else if (o.examScore >= b.scholarshipScore) {
             o.scholarship = b.scholarship;
         }
     }

@@ -41,12 +41,15 @@ bool TimeSystem::advanceDay() {
 }
 
 Json TimeSystem::toJson() const {
+    Json wh = Json::object();
+    for (const auto& [tag, h] : weeklyHours_) wh[tag] = h;
     return Json{
         {"week", week_},
         {"day", day_},
         {"hour", hour_},
         {"studiedThisWeek", studiedThisWeek_},
         {"lastWeekStudied", lastWeekStudied_},
+        {"weeklyHours", wh},
     };
 }
 
@@ -58,4 +61,8 @@ void TimeSystem::fromJson(const Json& j) {
     lastWeekStudied_ = ju::getOr(j, "lastWeekStudied", lastWeekStudied_);
     if (hour_ < kWakeHour) hour_ = kWakeHour;
     if (hour_ > kCurfewHour) hour_ = kCurfewHour;
+    weeklyHours_.clear();
+    if (j.contains("weeklyHours") && j["weeklyHours"].is_object())
+        for (auto it = j["weeklyHours"].begin(); it != j["weeklyHours"].end(); ++it)
+            weeklyHours_[it.key()] = it.value().get<int>();
 }

@@ -12,7 +12,7 @@
 #include "time/TimeSystem.h"
 
 void TradeSystem::passMarketHour(GameContext& ctx) const {
-    ctx.time->spendHours(ctx.config.balance().tradeHours);
+    ctx.time->spendHours(ctx.config.balance().tradeHours, "市场");
 }
 
 TradeResult TradeSystem::fail(TradeError c, const std::string& m,

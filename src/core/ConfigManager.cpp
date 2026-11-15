@@ -60,6 +60,9 @@ void ConfigManager::loadBalance() {
     balance_.midtermWeek  = ju::getOr(j, "midtermWeek", 8);
     balance_.examStartWeek = ju::getOr(j, "examStartWeek", 17);
     balance_.examStudyBonus = ju::getOr(j, "examStudyBonus", 3);
+    balance_.examVarianceRange = ju::getOr(j, "examVarianceRange", 6);
+    balance_.stockIndicatorSkill1 = ju::getOr(j, "stockIndicatorSkill1", 30);
+    balance_.stockIndicatorSkill2 = ju::getOr(j, "stockIndicatorSkill2", 60);
     balance_.maxSlots     = ju::getOr(j, "maxSlots", 30);
     balance_.studyStart   = ju::getOr(j, "studyStart", 40);
     balance_.studyGain    = ju::getOr(j, "studyGain", 3);

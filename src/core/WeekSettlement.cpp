@@ -42,6 +42,7 @@ void WeekSettlement::chargeExpenses() {
 }
 
 void WeekSettlement::settleStudy() {
+    const int preExamScore = ctx_.player->studyScore(); // 期末考试前的平时分
     StudyWeekOutcome o = ctx_.player->study().onWeekEnd(
         ctx_.time->settledWeek(), ctx_.time->lastWeekStudied());
 
@@ -56,19 +57,24 @@ void WeekSettlement::settleStudy() {
                              std::to_string(ctx_.config.balance().warnScore) +
                              "，期末再不冲刺要挂科了！");
 
+    if (o.examHeld)
+        rep_.lines.push_back("【期末考试】得分 " + std::to_string(o.examScore) +
+                             "（考前平时分 " + std::to_string(preExamScore) +
+                             " ± 考场波动）");
+
     if (o.failedNow) {
         ctx_.flags->set("failed");
         const int fee = std::min(o.retakeFee, ctx_.player->wallet().get());
         if (fee > 0) ctx_.player->wallet().spend(fee);
-        rep_.lines.push_back("【期末】平时分 " +
+        rep_.lines.push_back("【期末】考试 " +
                              std::to_string(ctx_.player->studyScore()) +
-                             "，挂科了……补考费 -¥" + std::to_string(fee));
+                             " 分，挂科了……补考费 -¥" + std::to_string(fee));
     } else if (ctx_.time->settledWeek() == ctx_.config.balance().weeks) {
-        rep_.lines.push_back("【期末】平时分 " +
-                             std::to_string(ctx_.player->studyScore()) + "，稳过！");
+        rep_.lines.push_back("【期末】考试 " +
+                             std::to_string(ctx_.player->studyScore()) + " 分，稳过！");
         if (o.scholarship > 0) {
             ctx_.player->wallet().add(o.scholarship);
-            rep_.lines.push_back("【奖学金】平时分 ≥" +
+            rep_.lines.push_back("【奖学金】考试 ≥" +
                                  std::to_string(ctx_.config.balance().scholarshipScore) +
                                  "，获得奖学金 +¥" + std::to_string(o.scholarship));
         }
@@ -90,8 +96,16 @@ void WeekSettlement::settleStocks() {
 }
 
 void WeekSettlement::settleEnergy() {
+    // 本周时间利用统计（v2 时间系统的周报亮点）
+    const auto& wh = ctx_.time->weeklyHours();
+    if (!wh.empty()) {
+        std::string parts;
+        for (const auto& [tag, h] : wh) parts += tag + " " + std::to_string(h) + "h · ";
+        rep_.lines.push_back("本周时间利用：" + parts.substr(0, parts.size() - 3));
+    }
     // 昏迷造成的体力上限扣减在周结算时恢复；睡眠回体力由睡觉机制负责
     ctx_.player->energy().restoreMax(ctx_.config.balance().staminaMax);
+    ctx_.time->clearWeeklyHours();
 }
 
 void WeekSettlement::checkMilestones() {

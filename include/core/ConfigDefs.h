@@ -20,6 +20,9 @@ struct BalanceDef {
     int midtermWeek = 8;          // 期中预警周
     int examStartWeek = 17;       // 考试周起始（第 17-18 周）
     int examStudyBonus = 3;       // 考试周图书馆冲刺加成
+    int examVarianceRange = 6;    // 期末考试分数波动范围（平时分 ±N）
+    int stockIndicatorSkill1 = 30; // 股力解锁：短期趋势指标
+    int stockIndicatorSkill2 = 60; // 股力解锁：庄家动向指标
     int maxSlots = 30;            // 背包格数
 
     // ---- v2 时间系统：24 小时制，行动按"小时 + 体力"计费 ----

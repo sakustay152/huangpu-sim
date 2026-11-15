@@ -20,7 +20,7 @@ ActionResult MoveCommand::execute(GameContext& ctx) const {
     if (!ctx.player->energy().spend(b.moveStamina))
         return {false, false, "体力不支，走不动了……（移动需要 " +
                                   std::to_string(b.moveStamina) + " 点体力，回宿舍睡一觉）"};
-    ctx.time->spendHours(b.moveHours);
+    ctx.time->spendHours(b.moveHours, "移动");
     ctx.locationId = to->id;
     return {true, true, "移动到【" + to->name + "】（体力 -" + std::to_string(b.moveStamina) +
                             " · " + std::to_string(b.moveHours) + " 小时）：" + to->desc};
@@ -29,7 +29,7 @@ ActionResult MoveCommand::execute(GameContext& ctx) const {
 ActionResult WorkCommand::execute(GameContext& ctx) const {
     const BalanceDef& b = ctx.config.balance();
     JobResult r = JobSystem(ctx.config).work(ctx);
-    ctx.time->spendHours(b.workHours);
+    ctx.time->spendHours(b.workHours, "打工");
     return {r.ok, true, r.msg + "（连轴 " + std::to_string(b.workHours) + " 小时班）"};
 }
 
@@ -42,7 +42,7 @@ ActionResult StudyCommand::execute(GameContext& ctx) const {
     std::string msg;
     const int gain = ctx.player->study().study(mode_, ctx.player->energy(),
                                                ctx.time->week(), msg);
-    ctx.time->spendHours(b.studyHours);
+    ctx.time->spendHours(b.studyHours, "学习");
     ctx.time->markStudied();
     return {true, true, msg + "，平时分 +" + std::to_string(gain) +
                             "（当前 " + std::to_string(ctx.player->studyScore()) + "）"};
@@ -89,7 +89,7 @@ ActionResult LearnStockCommand::execute(GameContext& ctx) const {
     int before = ctx.player->stockSkill();
     ctx.player->addStockSkill(gain);
     int after = ctx.player->stockSkill();
-    ctx.time->spendHours(b.learnStockHours);
+    ctx.time->spendHours(b.learnStockHours, "学股市");
     std::string msg = "啃了 " + std::to_string(b.learnStockHours) +
                       " 个小时 K 线教材（体力 -" + std::to_string(b.learnStockStaminaCost) +
                       "），股力 +" + std::to_string(after - before) +
@@ -109,7 +109,7 @@ ActionResult SocialPickCommand::execute(GameContext& ctx) const {
     if (!ctx.player->energy().spend(b.socialStamina))
         return {false, false, "体力不支，提不起劲聊天……（社交需要 " +
                                   std::to_string(b.socialStamina) + " 点体力）"};
-    ctx.time->spendHours(b.socialHours);
+    ctx.time->spendHours(b.socialHours, "社交");
     int before = ctx.npcs->affinity(npcId_);
     ctx.npcs->addAffinity(npcId_, delta_);
     int after = ctx.npcs->affinity(npcId_);

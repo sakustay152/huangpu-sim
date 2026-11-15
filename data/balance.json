@@ -10,6 +10,9 @@
   "midtermWeek": 8,
   "examStartWeek": 17,
   "examStudyBonus": 3,
+  "examVarianceRange": 6,
+  "stockIndicatorSkill1": 30,
+  "stockIndicatorSkill2": 60,
   "maxSlots": 30,
 
   "studyStart": 40,

@@ -17,9 +17,11 @@ enum class StudyMode { Normal, AllNighter };
 struct StudyWeekOutcome {
     int decay = 0;              // 本周没学习扣的分
     bool midtermWarn = false;   // 第 8 周 < 50
-    bool failedNow = false;     // 第 18 周 < 60
+    bool examHeld = false;      // 期末考试已举行（第 18 周）
+    int examScore = -1;         // 考试得分 = 平时分 ± 考场波动（-1 = 未考试）
+    bool failedNow = false;     // 第 18 周 考试 < 60
     int retakeFee = 0;          // 补考费
-    int scholarship = 0;        // 平时分 >= 85
+    int scholarship = 0;        // 考试 ≥ 85
 };
 
 class StudySystem : public ISaveable {

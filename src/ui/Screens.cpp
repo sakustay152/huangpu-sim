@@ -14,6 +14,7 @@
 #include "core/Session.h"
 #include "economy/Market.h"
 #include "events/GameEvent.h"
+#include "player/GoalTracker.h"
 #include "player/Inventory.h"
 #include "player/Player.h"
 #include "player/TradeSystem.h"
@@ -77,6 +78,20 @@ void CampusScreen::draw() {
          std::to_string(c->player->inventory().capacity()) + " 格");
     line("当前地点：" + console::paint(loc ? loc->name : c->locationId, console::YELLOW) +
          "（目标：期末总资产 ≥ " + money(c->config.balance().targetMoney) + "，不挂科）");
+    // ---- 目标进度条（GoalTracker 快照，与结局判定同口径） ----
+    {
+        GoalTracker tracker;
+        auto gs = tracker.snapshot(*c);
+        int pct = gs.targetMoney > 0 ? std::min(100, gs.totalAssets * 100 / gs.targetMoney) : 0;
+        int cells = pct / 10;
+        std::string bar;
+        for (int i = 0; i < 10; ++i) bar += (i < cells) ? "█" : "░";
+        std::string tone = pct >= 100 ? console::GREEN : (pct >= 50 ? console::YELLOW : console::RED);
+        line("目标进度 [" + console::paint(bar, tone.c_str()) + "] " +
+             console::paint(std::to_string(pct) + "%", tone.c_str()) +
+             " ｜ 挚友好感 " + std::to_string(gs.maxAffinity) + "/60" +
+             " ｜ 考试线 " + std::to_string(gs.studyScore) + "/60");
+    }
     if (!c->rumors.empty()) {
         rule();
         for (const auto& r : c->rumors) line(console::paint(r, console::MAGENTA));
@@ -421,6 +436,35 @@ void StockScreen::draw() {
          console::paint(std::to_string(static_cast<int>(std::round(s->effectiveFailProb(*c) * 100))) + "%",
                         console::YELLOW) +
          "（股力越高越倾向赚钱，但永不保证）");
+
+    // ---- 股力技术指标（读最近 K 线的收盘均值对比） ----
+    const BalanceDef& b = c->config.balance();
+    const int skill = c->player->stockSkill();
+    if (bars.size() >= 12 && skill >= b.stockIndicatorSkill2) {
+        double recent = 0, older = 0;
+        for (std::size_t i = bars.size() - 6; i < bars.size(); ++i) recent += bars[i].c;
+        for (std::size_t i = bars.size() - 12; i < bars.size() - 6; ++i) older += bars[i].c;
+        recent /= 6; older /= 6;
+        bool bull = recent >= older;
+        line(console::paint(std::string("★★ 庄家动向：资金净") +
+                                (bull ? "流入（偏多）" : "流出（偏空）") +
+                                "｜短期均值 ¥" + fmtPrice(recent) + " vs 前段 ¥" + fmtPrice(older),
+                            bull ? console::RED : console::GREEN));
+    } else if (bars.size() >= 6 && skill >= b.stockIndicatorSkill1) {
+        double recent = 0, older = 0;
+        for (std::size_t i = bars.size() - 3; i < bars.size(); ++i) recent += bars[i].c;
+        for (std::size_t i = bars.size() - 6; i < bars.size() - 3; ++i) older += bars[i].c;
+        recent /= 3; older /= 3;
+        bool bull = recent >= older;
+        line(console::paint(std::string("★ 技术分析：短期趋势偏") +
+                                (bull ? "多" : "空") +
+                                "｜近段均值 ¥" + fmtPrice(recent) + " vs 前段 ¥" + fmtPrice(older),
+                            bull ? console::RED : console::GREEN));
+    } else {
+        line(console::paint("盘口如天书……（股力达到 " +
+                                std::to_string(b.stockIndicatorSkill1) + " 可解锁技术指标）",
+                            console::DIM));
+    }
 
     drawCandles(bars, s->price());
     rule();
